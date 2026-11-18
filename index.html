@@ -1,0 +1,3604 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description"
+    content="Experiment with byte-pair encoding, teaching embeddings, self-attention and next-token sampling in a fully offline language model lab.">
+  <title>LLM Pipeline Explorer 2</title>
+  <link rel="icon"
+    href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSIuOWVtIiBmb250LXNpemU9IjkwIj7wn6egPC90ZXh0Pjwvc3ZnPg==">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101116;
+      --surface: #191a21;
+      --inset: #121319;
+      --soft: #20212b;
+      --text: #f4f3fa;
+      --sub: #b4b4c3;
+      --dim: #a09fae;
+      --line: #363641;
+      --line2: #2b2c35;
+      --purple: #b4a2fc;
+      --violet: #8e78e8;
+      --mint: #8ddac0;
+      --amber: #f2ba88;
+      --blue: #9abbf2;
+      --rose: #eea1c5;
+      --primary: #c0b0ff;
+      --ink: #211831;
+      --hero: #191823;
+      --grid: #3c394e;
+      --shadow: 0 20px 70px #0005;
+      --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-family: var(--sans);
+      font-size: 16px
+    }
+
+    :root[data-theme=light] {
+      color-scheme: light;
+      --bg: #f6f6f9;
+      --surface: #fff;
+      --inset: #f6f6fa;
+      --soft: #efedf6;
+      --text: #22222d;
+      --sub: #515260;
+      --dim: #62616f;
+      --line: #c8c7d2;
+      --line2: #dfdee6;
+      --purple: #6450a5;
+      --violet: #7760bd;
+      --mint: #1a735a;
+      --amber: #995522;
+      --blue: #3c6295;
+      --rose: #9a4170;
+      --primary: #6450a5;
+      --ink: #fff;
+      --hero: #eeedf5;
+      --grid: #cdc8de;
+      --shadow: 0 18px 50px #2221
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 90px
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+      color: inherit
+    }
+
+    button,
+    select,
+    input[type=checkbox],
+    input[type=range],
+    summary {
+      cursor: pointer
+    }
+
+    button,
+    select {
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 8px;
+      padding: .48rem .8rem;
+      font-size: .875rem;
+      font-weight: 570;
+      line-height: 1.45
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem
+    }
+
+    button:hover,
+    select:hover,
+    summary:hover {
+      border-color: var(--dim);
+      color: var(--text)
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: default
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible,
+    summary:focus-visible,
+    a:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 3px solid var(--purple);
+      outline-offset: 3px
+    }
+
+    input[type=range],
+    input[type=checkbox] {
+      accent-color: var(--violet)
+    }
+
+    input[type=range] {
+      width: 100%;
+      height: 20px;
+      margin: 5px 0
+    }
+
+    textarea,
+    input[type=text],
+    input[type=url] {
+      width: 100%;
+      background: var(--inset);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px 13px
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 50px;
+      line-height: 1.55;
+      font-size: .94rem
+    }
+
+    select {
+      max-width: 100%;
+      appearance: none;
+      background: var(--soft) url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='m2 2 5 5 5-5' stroke='%23878099' fill='none' stroke-width='1.6'/%3E%3C/svg%3E") right 10px center/12px auto no-repeat;
+      padding-right: 30px
+    }
+
+    a {
+      color: var(--purple)
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    p {
+      margin: 0
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.14
+    }
+
+    h3 {
+      font-size: 1.14rem;
+      letter-spacing: -.032em
+    }
+
+    h4,
+    label,
+    .label {
+      font-size: .875rem;
+      font-weight: 600
+    }
+
+    .hint,
+    .subtext {
+      font-size: .875rem;
+      color: var(--sub)
+    }
+
+    .meta,
+    .micro {
+      font: .76rem/1.5 var(--mono);
+      color: var(--dim)
+    }
+
+    .mono,
+    output,
+    .value {
+      font-family: var(--mono)
+    }
+
+    .wrap {
+      max-width: 1328px;
+      margin: auto;
+      padding-inline: clamp(20px, 4.6vw, 76px)
+    }
+
+    .row,
+    .between,
+    .tools,
+    .brand,
+    .navbtn,
+    .subhead {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .between {
+      justify-content: space-between
+    }
+
+    .tools {
+      flex-wrap: wrap
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px
+    }
+
+    .stack-sm {
+      display: grid;
+      gap: 8px
+    }
+
+    .muted {
+      color: var(--sub)
+    }
+
+    .primary {
+      background: var(--primary);
+      color: var(--ink);
+      border-color: transparent
+    }
+
+    .primary:hover {
+      color: var(--ink);
+      filter: brightness(1.07)
+    }
+
+    .quiet {
+      background: transparent
+    }
+
+    .ico {
+      width: 17px;
+      height: 17px;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round
+    }
+
+    .iconbtn {
+      width: 36px;
+      height: 36px;
+      padding: 0
+    }
+
+    .svgdefs {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden
+    }
+
+    .skip {
+      position: fixed;
+      top: -100px;
+      left: 10px;
+      z-index: 30;
+      background: var(--surface);
+      padding: 8px
+    }
+
+    .skip:focus {
+      top: 8px
+    }
+
+    header {
+      border-bottom: 1px solid var(--line2)
+    }
+
+    .topbar {
+      height: 64px
+    }
+
+    .brand {
+      font-weight: 700;
+      letter-spacing: -.035em;
+      gap: 9px
+    }
+
+    .logomark {
+      width: 30px;
+      height: 30px;
+      background: #c4b2ff;
+      display: grid;
+      place-content: center;
+      grid-template-columns: repeat(3, 4px);
+      gap: 3px;
+      align-items: center;
+      border-radius: 9px;
+      transform: rotate(-3deg)
+    }
+
+    .logomark i {
+      width: 4px;
+      background: #382951;
+      border-radius: 3px;
+      height: 12px
+    }
+
+    .logomark i:nth-child(2) {
+      height: 20px
+    }
+
+    .logomark i:nth-child(3) {
+      height: 15px
+    }
+
+    .version {
+      font: .69rem var(--mono);
+      color: var(--purple);
+      border: 1px solid var(--line);
+      padding: 2px 5px;
+      border-radius: 4px
+    }
+
+    .headtools {
+      gap: 8px
+    }
+
+    .headtools .aboutbtn {
+      border-color: transparent;
+      background: transparent
+    }
+
+    .hero {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      background: var(--hero);
+      border-bottom: 1px solid var(--line2)
+    }
+
+    .hero-inner {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+      align-items: center;
+      gap: 20px;
+      min-height: 278px;
+      padding-block: 31px
+    }
+
+    .hero:before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: radial-gradient(ellipse at 76% 63%, color-mix(in srgb, var(--violet) 11%, transparent), transparent 55%)
+    }
+
+    .hero h1 {
+      font-size: clamp(2.75rem, 3.7vw, 3.65rem);
+      letter-spacing: -.065em;
+      font-weight: 650;
+      line-height: 1.01
+    }
+
+    .hero h1 span {
+      color: var(--purple)
+    }
+
+    .hero p {
+      max-width: 49ch;
+      color: var(--sub);
+      font-size: .97rem;
+      line-height: 1.5;
+      margin: 13px 0 18px
+    }
+
+    .tourbtn {
+      background: var(--soft);
+      border-color: color-mix(in srgb, var(--purple) 42%, var(--line));
+      color: var(--text)
+    }
+
+    .herofigure {
+      position: relative;
+      margin: 0;
+      min-width: 0
+    }
+
+    .herofigure canvas {
+      display: block;
+      width: 100%;
+      height: 185px
+    }
+
+    .herocap {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      text-align: center;
+      font: .75rem var(--mono);
+      color: var(--sub);
+      letter-spacing: .01em
+    }
+
+    .stagenav {
+      position: sticky;
+      z-index: 8;
+      top: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line)
+    }
+
+    .navgrid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr)
+    }
+
+    .navbtn {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      justify-content: center;
+      color: var(--sub);
+      padding: 16px 5px;
+      position: relative;
+      font-size: .9rem
+    }
+
+    .navbtn[aria-current=step] {
+      color: var(--purple)
+    }
+
+    .navbtn[aria-current=step]:after {
+      content: "";
+      position: absolute;
+      bottom: -1px;
+      height: 3px;
+      border-radius: 3px 3px 0 0;
+      background: var(--purple);
+      left: 0;
+      right: 0
+    }
+
+    .navnum {
+      font: .72rem var(--mono);
+      color: var(--dim)
+    }
+
+    .navbtn[aria-current=step] .navnum {
+      color: var(--purple)
+    }
+
+    .stage {
+      padding: 38px 0 48px;
+      scroll-margin-top: 0;
+      border-bottom: 1px solid var(--line2)
+    }
+
+    .stagetop {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px
+    }
+
+    .kicker {
+      font: 600 .72rem/1.5 var(--mono);
+      letter-spacing: .12em;
+      color: var(--purple);
+      margin-bottom: 7px
+    }
+
+    .stage h2 {
+      font-size: clamp(2rem, 3.1vw, 2.7rem);
+      letter-spacing: -.055em;
+      font-weight: 630
+    }
+
+    .intro {
+      color: var(--sub);
+      margin-top: 7px;
+      font-size: .98rem;
+      max-width: 76ch
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px
+    }
+
+    .panel {
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: clamp(17px, 2vw, 24px)
+    }
+
+    .panelhead {
+      margin-bottom: 15px
+    }
+
+    .panelhead .subhead {
+      gap: 10px
+    }
+
+    .glyph {
+      display: grid;
+      place-items: center;
+      color: var(--purple);
+      background: color-mix(in srgb, var(--purple) 11%, transparent);
+      width: 31px;
+      height: 31px;
+      border-radius: 8px
+    }
+
+    .fieldtop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-content: flex-start
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in srgb, currentColor 12%, var(--inset));
+      border: 1px solid color-mix(in srgb, currentColor 33%, var(--inset));
+      border-radius: 5px;
+      padding: 3px 7px;
+      min-width: 13px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      max-width: 100%;
+      font: .87rem/1.45 var(--mono)
+    }
+
+    .t0 {
+      color: var(--purple)
+    }
+
+    .t1 {
+      color: var(--mint)
+    }
+
+    .t2 {
+      color: var(--amber)
+    }
+
+    .t3 {
+      color: var(--blue)
+    }
+
+    .t4 {
+      color: var(--rose)
+    }
+
+    .chipwell {
+      background: var(--inset);
+      border: 1px solid var(--line2);
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 76px;
+      max-height: 230px;
+      overflow: auto
+    }
+
+    .tick {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--sub);
+      font-size: .84rem;
+      font-weight: 480
+    }
+
+    .tick input {
+      margin: 0;
+      width: 15px;
+      height: 15px
+    }
+
+    .value {
+      color: var(--purple);
+      font-size: .87rem
+    }
+
+    .rule {
+      border: 0;
+      border-top: 1px solid var(--line2);
+      margin: 1px 0
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px
+    }
+
+    .metric {
+      border-left: 2px solid var(--line);
+      padding-left: 10px
+    }
+
+    .metric strong {
+      display: block;
+      font: 600 1.25rem/1.35 var(--mono);
+      color: var(--text)
+    }
+
+    .metric span {
+      font-size: .8rem;
+      color: var(--sub)
+    }
+
+    .fullpanel {
+      margin-top: 16px
+    }
+
+    .chart {
+      display: block;
+      width: 100%;
+      height: 105px
+    }
+
+    .smallnote {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: var(--sub);
+      font-size: .88rem
+    }
+
+    .smallnote .ico {
+      color: var(--purple);
+      margin-top: 2px
+    }
+
+    .details,
+    details {
+      border-top: 1px solid var(--line2);
+      margin-top: 14px
+    }
+
+    summary {
+      font-size: .94rem;
+      font-weight: 600;
+      padding: 14px 0;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    summary::-webkit-details-marker {
+      display: none
+    }
+
+    summary:before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-top: 1.5px solid currentColor;
+      border-right: 1.5px solid currentColor;
+      transform: rotate(45deg);
+      margin: 0 3px;
+      color: var(--dim)
+    }
+
+    details[open]>summary:before {
+      transform: rotate(135deg)
+    }
+
+    details .hint {
+      margin-bottom: 8px
+    }
+
+    .why {
+      padding: 16px 0 0;
+      margin-top: 5px;
+      font-size: .92rem;
+      color: var(--sub)
+    }
+
+    .why strong {
+      color: var(--text)
+    }
+
+    .scroll {
+      overflow: auto;
+      max-height: 335px
+    }
+
+    .comparegrid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px
+    }
+
+    .comparebox {
+      padding: 12px;
+      border: 1px solid var(--line2);
+      border-radius: 8px;
+      background: var(--inset)
+    }
+
+    .comparebox div {
+      margin-top: 8px
+    }
+
+    .comparebox .chip {
+      font-size: .76rem;
+      padding: 2px 4px
+    }
+
+    .warning {
+      color: var(--amber);
+      font-size: .83rem
+    }
+
+    .warnempty:empty {
+      display: none
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: .86rem;
+      text-align: left
+    }
+
+    th,
+    td {
+      padding: 7px 9px;
+      border-bottom: 1px solid var(--line2)
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--sub)
+    }
+
+    td {
+      overflow-wrap: anywhere
+    }
+
+    caption {
+      font-size: .87rem;
+      text-align: left;
+      color: var(--sub);
+      padding: 5px 0 10px
+    }
+
+    ol {
+      padding-left: 1.6rem
+    }
+
+    .mergeitem {
+      font: .88rem/1.9 var(--mono);
+      color: var(--sub)
+    }
+
+    .mergeitem.active {
+      color: var(--mint)
+    }
+
+    .caps {
+      font: .72rem var(--mono);
+      letter-spacing: .07em;
+      text-transform: uppercase
+    }
+
+    .foot {
+      padding-block: 24px;
+      color: var(--sub);
+      font-size: .85rem
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 99px;
+      padding: 2px 8px;
+      font: .76rem var(--mono);
+      color: var(--sub)
+    }
+
+    [hidden] {
+      display: none !important
+    }
+
+    .sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0
+    }
+
+    @media(max-width:820px) {
+      .comparegrid {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .hero-inner {
+        grid-template-columns: 1fr 1fr;
+        gap: 4px
+      }
+
+      .headtools button {
+        padding: .42rem .6rem
+      }
+
+      .herofigure canvas {
+        height: 150px
+      }
+
+      .herocap {
+        font-size: .64rem
+      }
+
+      .panel {
+        padding: 15px
+      }
+
+      .panelhead {
+        flex-wrap: wrap
+      }
+    }
+
+    @media(max-width:680px) {
+      .wrap {
+        padding-inline: 16px
+      }
+
+      .topbar {
+        height: 54px
+      }
+
+      .brand {
+        font-size: .92rem;
+        gap: 6px
+      }
+
+      .logomark {
+        width: 25px;
+        height: 25px
+      }
+
+      .headtools .toolname {
+        display: none
+      }
+
+      .headtools button {
+        width: 33px;
+        height: 33px;
+        padding: 0
+      }
+
+      .headtools {
+        gap: 5px
+      }
+
+      .hero-inner {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding-block: 25px 19px
+      }
+
+      .hero h1 {
+        font-size: 2.6rem
+      }
+
+      .hero h1 br {
+        display: none
+      }
+
+      .hero p {
+        margin: 10px 0 12px
+      }
+
+      .herofigure canvas {
+        height: 102px
+      }
+
+      .herocap {
+        font-size: .68rem
+      }
+
+      .navnum {
+        display: none
+      }
+
+      .navbtn {
+        font-size: .77rem;
+        gap: 4px;
+        padding: 14px 1px
+      }
+
+      .navbtn .ico {
+        width: 14px;
+        height: 14px
+      }
+
+      .stage {
+        padding: 28px 0 32px
+      }
+
+      .split {
+        grid-template-columns: 1fr
+      }
+
+      .stagetop {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 15px
+      }
+
+      .stage h2 {
+        font-size: 2.2rem
+      }
+
+      .intro {
+        font-size: .92rem
+      }
+
+      .comparegrid {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .panelhead {
+        margin-bottom: 12px
+      }
+
+      .between {
+        flex-wrap: wrap
+      }
+
+      .topbar,
+      .topbar .brand {
+        flex-wrap: nowrap
+      }
+
+      .metrics {
+        gap: 5px
+      }
+
+      .metric {
+        padding-left: 7px
+      }
+
+      .foot {
+        align-items: flex-start
+      }
+    }
+
+    @media(prefers-reduced-motion:reduce) {
+
+      *,
+      *:before,
+      *:after {
+        scroll-behavior: auto !important;
+        animation: none !important;
+        transition: none !important
+      }
+    }
+
+    .plotlayout {
+      display: grid;
+      grid-template-columns: minmax(0, 2.25fr) minmax(215px, .9fr);
+      gap: 20px
+    }
+
+    .plotcol,
+    .plotaside {
+      min-width: 0
+    }
+
+    .plotaside {
+      align-content: start;
+      border-left: 1px solid var(--line2);
+      padding-left: 20px
+    }
+
+    .plotaside select {
+      width: 100%
+    }
+
+    .plotframe {
+      position: relative;
+      border: 1px solid var(--line);
+      background: var(--inset);
+      border-radius: 9px;
+      overflow: hidden
+    }
+
+    .plotframe canvas {
+      display: block;
+      width: 100%;
+      height: clamp(290px, 30vw, 390px);
+      touch-action: none;
+      cursor: grab
+    }
+
+    .plotframe canvas:active {
+      cursor: grabbing
+    }
+
+    .plotcontrols {
+      margin-bottom: 10px
+    }
+
+    .plotframe+.plotcontrols {
+      margin: 10px 0
+    }
+
+    .plotread {
+      position: absolute;
+      right: 10px;
+      top: 9px;
+      pointer-events: none;
+      background: var(--inset);
+      border: 1px solid var(--line);
+      padding: 3px 6px;
+      border-radius: 4px;
+      font: .72rem var(--mono);
+      color: var(--sub)
+    }
+
+    .plotTip {
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      pointer-events: none;
+      box-shadow: var(--shadow);
+      padding: 6px 9px;
+      max-width: min(230px, 90%);
+      font-size: .8rem
+    }
+
+    .seg {
+      display: flex;
+      gap: 2px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 3px;
+      background: var(--inset)
+    }
+
+    .seg button {
+      background: none;
+      border: 0;
+      padding: 4px 9px;
+      color: var(--sub);
+      font-size: .83rem
+    }
+
+    .seg [aria-pressed=true] {
+      background: var(--soft);
+      color: var(--purple);
+      box-shadow: 0 0 0 1px var(--line)
+    }
+
+    .legend {
+      font: .77rem var(--mono);
+      color: var(--sub)
+    }
+
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 5px
+    }
+
+    .neighbor {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: start;
+      font-size: .8rem;
+      color: var(--sub);
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid var(--line2);
+      border-radius: 0;
+      padding: 2px 0 6px;
+      text-align: left
+    }
+
+    .neighbor b {
+      font: .77rem var(--mono);
+      color: var(--mint)
+    }
+
+    .customlist {
+      max-height: 200px;
+      overflow: auto
+    }
+
+    .customitem {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .87rem;
+      border-top: 1px solid var(--line2);
+      padding: 5px 0;
+      overflow-wrap: anywhere
+    }
+
+    .customitem button {
+      padding: 2px 8px
+    }
+
+    .heatwrap {
+      max-width: 100%;
+      max-height: 340px;
+      overflow: auto;
+      margin: 10px 0
+    }
+
+    .heattable {
+      border-collapse: separate;
+      border-spacing: 2px;
+      width: max-content;
+      min-width: 0
+    }
+
+    .heattable td,
+    .heattable th {
+      border: 0;
+      padding: 0;
+      text-align: center;
+      font: .68rem/1.35 var(--mono)
+    }
+
+    .heattable th {
+      padding: 0 3px;
+      max-width: 85px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .heatcell {
+      border: 1px solid transparent;
+      border-radius: 3px;
+      width: 24px;
+      height: 23px;
+      min-width: 20px;
+      padding: 0;
+      display: block
+    }
+
+    .heatcell[aria-pressed=true] {
+      border: 2px solid var(--text)
+    }
+
+    .heattable .heatcell:focus-visible {
+      outline-offset: 0
+    }
+
+    .plotcontrols .meta {
+      font-size: .72rem
+    }
+
+    @media(max-width:820px) {
+      .plotlayout {
+        grid-template-columns: 1fr
+      }
+
+      .plotaside {
+        border: 0;
+        border-top: 1px solid var(--line2);
+        padding: 15px 0 0
+      }
+
+      .plotframe canvas {
+        height: 330px
+      }
+    }
+
+    @media(max-width:680px) {
+      .plotframe canvas {
+        height: 270px
+      }
+
+      .stage .plotcontrols {
+        gap: 6px
+      }
+
+      .plotlayout {
+        gap: 12px
+      }
+
+      .heatcell {
+        width: 22px;
+        height: 22px
+      }
+    }
+
+    .attlayout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr);
+      gap: 16px
+    }
+
+    .inspector {
+      background: var(--inset);
+      border: 1px solid var(--line2);
+      padding: 15px;
+      border-radius: 9px;
+      min-width: 0
+    }
+
+    .mathlist {
+      display: grid;
+      gap: 8px;
+      margin-top: 13px
+    }
+
+    .mathstep {
+      border-left: 2px solid var(--violet);
+      padding-left: 10px
+    }
+
+    .mathstep span,
+    .mathstep b {
+      display: block
+    }
+
+    .mathstep span {
+      font-size: .78rem;
+      color: var(--sub)
+    }
+
+    .mathstep b,
+    .vectorlist {
+      font: .84rem/1.6 var(--mono);
+      overflow-wrap: anywhere
+    }
+
+    .vectorlist {
+      display: grid;
+      gap: 8px;
+      color: var(--sub)
+    }
+
+    #attHeat .heatcell {
+      width: 35px;
+      height: 25px;
+      font: .63rem var(--mono)
+    }
+
+    #attHeat .heattable th {
+      max-width: 55px
+    }
+
+    .inspector summary {
+      font-size: .83rem
+    }
+
+    @media(max-width:750px) {
+      .attlayout {
+        grid-template-columns: minmax(0, 1fr)
+      }
+    }
+
+    .sliderlist {
+      display: grid;
+      gap: 16px
+    }
+
+    .bars {
+      display: grid;
+      gap: 7px;
+      max-height: 275px;
+      overflow: auto;
+      align-content: start
+    }
+
+    .barrow {
+      display: grid;
+      grid-template-columns: minmax(58px, 1fr) minmax(55px, 2fr) 55px;
+      align-items: center;
+      gap: 8px;
+      font: .78rem var(--mono)
+    }
+
+    .barrow span:first-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .bartrack {
+      height: 11px;
+      background: var(--inset);
+      border-radius: 3px;
+      overflow: hidden
+    }
+
+    .bartrack i {
+      display: block;
+      height: 100%;
+      min-width: 1px;
+      background: var(--purple);
+      border-radius: 3px;
+      transition: width .18s
+    }
+
+    .barrow:first-child .bartrack i {
+      background: var(--mint)
+    }
+
+    .barrow .percent {
+      text-align: right;
+      color: var(--sub)
+    }
+
+    .generation {
+      background: var(--inset);
+      border: 1px solid var(--line2);
+      border-radius: 8px;
+      min-height: 67px;
+      padding: 12px;
+      font: .95rem/1.6 var(--mono);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere
+    }
+
+    .generation strong {
+      font-weight: 500;
+      color: var(--mint)
+    }
+
+    dialog {
+      padding: 0;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      width: min(94vw, 660px);
+      max-height: 80dvh;
+      overflow: auto
+    }
+
+    dialog::backdrop {
+      background: #080911a8
+    }
+
+    .dialogtop {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line2);
+      padding: 16px 20px;
+      z-index: 1
+    }
+
+    .dialogtop h2 {
+      font-size: 1.35rem;
+      letter-spacing: -.035em
+    }
+
+    .doc {
+      padding: 18px 22px;
+      color: var(--sub);
+      font-size: .94rem
+    }
+
+    .doc h3 {
+      color: var(--text);
+      margin: 20px 0 10px
+    }
+
+    .doc p+p {
+      margin-top: 10px
+    }
+
+    .doc strong {
+      color: var(--text)
+    }
+
+    .doc code {
+      font-family: var(--mono);
+      color: var(--purple)
+    }
+
+    #tourCard {
+      position: fixed;
+      z-index: 12;
+      width: min(340px, calc(100vw - 24px));
+      background: var(--surface);
+      border: 1px solid var(--purple);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 15px;
+      display: grid;
+      gap: 9px
+    }
+
+    #tourCard .kicker {
+      margin: 0
+    }
+
+    #tourCard .between button {
+      padding: 2px 7px;
+      font-size: .78rem
+    }
+
+    .tourFocus {
+      outline: 3px solid var(--purple);
+      outline-offset: 4px
+    }
+
+    .stage,
+    .panel,
+    .hero {
+      min-width: 0
+    }
+
+    .generation,
+    .customitem,
+    .meta,
+    .vectorlist,
+    .hint {
+      overflow-wrap: anywhere
+    }
+
+    .heatwrap {
+      overscroll-behavior: contain
+    }
+
+    #selfPanel {
+      padding-block: 12px 25px
+    }
+
+    #testResults {
+      font: .85rem/1.7 var(--mono)
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip" href="#tokenizer">Skip to tokenizer</a>
+  <svg class="svgdefs" aria-hidden="true">
+    <defs>
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path d="M3 4c4-1 6 0 9 2 3-2 5-3 9-2v15c-4-1-6 0-9 2-3-2-5-3-9-2zM12 6v15" />
+      </symbol>
+      <symbol id="i-theme" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" />
+      </symbol>
+      <symbol id="i-share" viewBox="0 0 24 24">
+        <circle cx="5" cy="12" r="3" />
+        <circle cx="18" cy="5" r="3" />
+        <circle cx="18" cy="19" r="3" />
+        <path d="m8 11 7-5m-7 7 7 5" />
+      </symbol>
+      <symbol id="i-tour" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="m16 8-2.5 5.5L8 16l2.5-5.5z" />
+      </symbol>
+      <symbol id="i-token" viewBox="0 0 24 24">
+        <rect x="2.5" y="7" width="7" height="10" rx="2" />
+        <rect x="13" y="7" width="8.5" height="10" rx="2" />
+      </symbol>
+      <symbol id="i-embed" viewBox="0 0 24 24">
+        <path d="m12 2 8.5 5v10L12 22l-8.5-5V7zM3.5 7l8.5 5 8.5-5M12 12v10" />
+      </symbol>
+      <symbol id="i-attn" viewBox="0 0 24 24">
+        <path d="M4 5h16M4 12h16M4 19h16M5 5l14 14M5 19 19 5" />
+        <circle cx="4" cy="5" r="1.6" />
+        <circle cx="20" cy="12" r="1.6" />
+        <circle cx="4" cy="19" r="1.6" />
+      </symbol>
+      <symbol id="i-predict" viewBox="0 0 24 24">
+        <path d="M3 20h19M6 16V9m6 7V4m6 12v-5" stroke-width="2.4" />
+      </symbol>
+      <symbol id="i-down" viewBox="0 0 24 24">
+        <path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4" />
+      </symbol>
+      <symbol id="i-text" viewBox="0 0 24 24">
+        <path d="M5 5h14M5 10h10M5 15h14M5 20h7" />
+      </symbol>
+      <symbol id="i-play" viewBox="0 0 24 24">
+        <path d="m8 5 10 7-10 7z" />
+      </symbol>
+    </defs>
+  </svg>
+  <header>
+    <div class="wrap topbar between">
+      <div class="brand"><span class="logomark" aria-hidden="true"><i></i><i></i><i></i></span>LLM Pipeline Explorer
+        <span class="version">2</span></div>
+      <div class="tools headtools"><button class="aboutbtn" id="aboutBtn" aria-label="About this explorer"><svg
+            class="ico">
+            <use href="#i-book" />
+          </svg><span class="toolname">About</span></button><button class="quiet iconbtn" id="themeBtn"
+          aria-label="Switch theme" title="Switch theme"><svg class="ico">
+            <use href="#i-theme" />
+          </svg></button><button id="shareBtn" class="quiet" aria-label="Share current settings"><svg class="ico">
+            <use href="#i-share" />
+          </svg><span class="toolname">Share</span></button></div>
+    </div>
+  </header>
+  <div class="hero">
+    <div class="wrap hero-inner">
+      <div>
+        <h1>From text to<br> <span>prediction.</span></h1>
+        <p>Follow a sentence through four interactive experiments in how language models work.</p><button
+          class="tourbtn" id="tourBtn"><svg class="ico">
+            <use href="#i-tour" />
+          </svg>Guided tour</button>
+      </div>
+      <figure class="herofigure"
+        aria-label="A diagram of tokens flowing through a vector space and attention connections to a probability distribution">
+        <canvas id="heroArt" aria-hidden="true"></canvas>
+        <figcaption class="herocap"><span>Tokens</span><span>Vectors</span><span>Attention</span><span>Prediction</span>
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+  <nav class="stagenav" aria-label="Pipeline stages">
+    <div class="wrap navgrid">
+      <button class="navbtn" data-stage="tokenizer" aria-current="step"><span class="navnum">01</span><svg class="ico">
+          <use href="#i-token" />
+        </svg>Tokenizer</button>
+      <button class="navbtn" data-stage="embeddings"><span class="navnum">02</span><svg class="ico">
+          <use href="#i-embed" />
+        </svg>Embeddings</button>
+      <button class="navbtn" data-stage="attention"><span class="navnum">03</span><svg class="ico">
+          <use href="#i-attn" />
+        </svg>Attention</button>
+      <button class="navbtn" data-stage="prediction"><span class="navnum">04</span><svg class="ico">
+          <use href="#i-predict" />
+        </svg>Next token</button>
+    </div>
+  </nav>
+  <main id="main" class="wrap">
+    <div id="selfPanel" hidden>
+      <section class="panel">
+        <h3>Built-in self-test</h3>
+        <p id="testSummary" aria-live="polite"></p>
+        <ul id="testResults"></ul>
+      </section>
+    </div>
+    <section class="stage" id="tokenizer" aria-labelledby="title1">
+      <div class="stagetop">
+        <div>
+          <p class="kicker">STAGE 01 / 04</p>
+          <h2 id="title1">Tokenizer</h2>
+          <p class="intro">Teach a tokenizer which bytes belong together, then try its vocabulary on your own text.</p>
+        </div><button class="quiet" id="jsonExport"><svg class="ico">
+            <use href="#i-down" />
+          </svg>Export JSON</button>
+      </div>
+      <div class="split">
+        <article class="panel" id="corpusPanel">
+          <div class="between panelhead">
+            <div class="subhead"><span class="glyph"><svg class="ico">
+                  <use href="#i-book" />
+                </svg></span>
+              <h3>Training corpus</h3>
+            </div><select id="corpusPreset" aria-label="Corpus preset">
+              <option value="english">English sentences</option>
+              <option value="code">Code snippets</option>
+              <option value="multi">Multilingual</option>
+              <option value="custom">Custom corpus</option>
+            </select>
+          </div>
+          <div class="stack"><label class="sr" for="corpus">Edit training corpus</label><textarea id="corpus" rows="5"
+              spellcheck="false"></textarea>
+            <div class="between"><button class="primary" id="build"><svg class="ico">
+                  <use href="#i-play" />
+                </svg>Build vocabulary</button><span class="meta" id="corpusStatus" aria-live="polite"></span></div>
+            <p id="corpusWarn" class="warning warnempty"></p>
+            <hr class="rule">
+            <div>
+              <div class="fieldtop"><label for="vocab">Vocabulary size</label><output id="vocabValue"
+                  for="vocab"></output></div><input id="vocab" type="range" min="258" max="258" value="258">
+              <div class="between meta"><span>258 base symbols</span><span id="vocabMax"></span></div>
+            </div>
+          </div>
+        </article>
+        <article class="panel" id="encoderPanel">
+          <div class="between panelhead">
+            <div class="subhead"><span class="glyph"><svg class="ico">
+                  <use href="#i-token" />
+                </svg></span>
+              <h3>Sentence encoder</h3>
+            </div><span class="pill" id="tokenCount" aria-live="polite"></span>
+          </div>
+          <div class="stack"><label class="sr" for="sentence">Sentence to encode</label><textarea id="sentence" rows="2"
+              spellcheck="false">The curious cat sat on the mat.</textarea>
+            <div>
+              <div class="between" style="margin-bottom:8px"><span class="label">Token stream</span><label
+                  class="tick"><input type="checkbox" id="visible">Show spaces &amp; specials</label></div>
+              <div class="chipwell chips" id="tokens" role="group"
+                aria-label="Encoded tokens. Use the left and right arrow keys to inspect each token."></div>
+              <p class="meta" id="tokenInfo" aria-live="polite">Select a token to inspect its ID and bytes.</p>
+            </div>
+            <p id="sentenceWarn" class="warning warnempty"></p>
+            <div class="metrics">
+              <div class="metric"><strong id="rawSize"></strong><span>Characters</span></div>
+              <div class="metric"><strong id="tpw"></strong><span>Tokens / word</span></div>
+              <div class="metric"><strong id="compression"></strong><span>Chars / token</span></div>
+            </div>
+          </div>
+        </article>
+      </div>
+      <article class="panel fullpanel">
+        <div class="split">
+          <div class="stack-sm" id="replayPanel">
+            <h3>Training replay</h3>
+            <p class="hint" id="mergeStatus" aria-live="polite"></p>
+            <div class="tools"><button id="replayPlay">Play replay</button><button id="replayStep">Step</button><button
+                class="quiet" id="replayReset">Rewind</button></div>
+          </div>
+          <div>
+            <div class="between">
+              <h4>Corpus tokens vs. vocabulary</h4><span class="meta" id="corpusTokens"></span>
+            </div><canvas class="chart" id="bpeChart" role="img"
+              aria-label="Token count decreases as merges grow the vocabulary"></canvas>
+          </div>
+        </div>
+        <details>
+          <summary>Learned merges</summary>
+          <div class="scroll">
+            <ol id="mergeList"></ol>
+          </div>
+        </details>
+        <details id="comparePanel">
+          <summary>Compare tokenizers</summary>
+          <p class="hint">Compare the same input across character, word and byte-pair vocabularies. Each preview shows
+            up to 40 pieces.</p>
+          <div class="comparegrid" id="compare"></div>
+        </details>
+      </article>
+      <p class="why"><strong>Why this matters.</strong> A model processes tokens. Text that takes more tokens uses more
+        of its context window.</p>
+      <details>
+        <summary>Under the hood</summary>
+        <p class="hint">Start with 256 UTF-8 byte IDs and two sequence markers. Within each text segment, BPE repeatedly
+          joins the most frequent adjacent pair. Encoding applies the learned merges in rank order. Frequent words can
+          become single tokens. A new word can always be written with smaller pieces.</p>
+        <p class="hint" id="example"></p>
+        <p class="hint" id="languageCost"></p>
+      </details>
+    </section>
+
+    <section class="stage" id="embeddings" aria-labelledby="title2">
+      <div class="stagetop">
+        <div>
+          <p class="kicker">STAGE 02 / 04</p>
+          <h2 id="title2">Embeddings</h2>
+          <p class="intro">Turn sentences into coordinates and explore what makes two of them neighbors.</p>
+        </div>
+        <div class="tools"><button class="quiet" id="csvExport"><svg class="ico">
+              <use href="#i-down" />
+            </svg>Export CSV</button><button class="quiet" id="pngExport"><svg class="ico">
+              <use href="#i-down" />
+            </svg>Plot PNG</button></div>
+      </div>
+      <div class="panel">
+        <div class="between panelhead">
+          <div class="subhead"><span class="glyph"><svg class="ico">
+                <use href="#i-embed" />
+              </svg></span>
+            <h3>Embedding space</h3>
+          </div><span class="hint">Teaching embeddings, not a trained neural model.</span>
+        </div>
+        <div class="plotlayout">
+          <div class="plotcol">
+            <div class="between plotcontrols">
+              <div class="seg" role="group" aria-label="Embedding mode"><button data-mode="meaning"
+                  aria-pressed="true">Meaning</button><button data-mode="surface" aria-pressed="false">Surface
+                  wording</button></div><label class="tick"><input id="labels" type="checkbox" checked>Labels</label>
+            </div>
+            <div class="plotframe"><canvas id="plot" tabindex="0" role="img"
+                aria-label="3D embedding plot. Use arrow keys to orbit and plus or minus to zoom. Use the nearby point selector or data table to explore sentences."></canvas>
+              <div id="plotTip" class="plotTip" hidden></div><span id="pcaReadout" class="plotread"></span>
+            </div>
+            <div class="between plotcontrols">
+              <div class="tools"><button id="resetCamera" class="quiet">Reset view</button><label class="tick"><input
+                    type="checkbox" id="rotate">Auto-rotate</label></div><span class="meta">Drag to orbit · Pinch or
+                scroll to zoom</span>
+            </div>
+            <div class="tools legend" id="legend"></div>
+          </div>
+          <aside class="stack plotaside">
+            <div class="stack-sm"><label for="group">Preset group</label><select id="group">
+                <option value="mixed">Mixed examples</option>
+                <option value="home">Animals &amp; household</option>
+                <option value="python">Programming vs. snakes</option>
+                <option value="finance">Finance</option>
+                <option value="bat">Bats &amp; baseball</option>
+              </select></div>
+            <div>
+              <div class="fieldtop"><label for="clusters">Clusters</label><output for="clusters" id="kValue"></output>
+              </div><input id="clusters" type="range" min="1" max="6" value="4">
+            </div>
+            <hr class="rule">
+            <div class="stack-sm"><label for="pointSelect">Inspect a point</label><select id="pointSelect"></select>
+              <h4>Nearest neighbors</h4>
+              <div id="neighbors" class="stack-sm"></div>
+              <p class="hint" id="senseInfo"></p>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="split fullpanel">
+        <article class="panel stack-sm">
+          <h3>Add your own sentences</h3><label for="newPoints" class="hint">Enter one word or sentence per
+            line.</label><textarea id="newPoints" rows="3" placeholder="The bat flew out of the cave."></textarea>
+          <div class="between"><button class="primary" id="addPoints">Add to plot</button><span id="pointCount"
+              class="meta"></span></div>
+          <div id="pointWarn" class="warning warnempty" aria-live="polite"></div>
+          <div id="customPoints" class="customlist"></div>
+        </article>
+        <article class="panel">
+          <div class="between">
+            <h3>Cosine similarity</h3><span class="meta">−1 to +1</span>
+          </div>
+          <p class="hint">Select a cell to highlight a pair. Use arrow keys to move through the matrix.</p>
+          <div id="simHeat" class="heatwrap"></div>
+          <p id="simReadout" class="hint" aria-live="polite"></p>
+        </article>
+      </div>
+      <details>
+        <summary>Point data table</summary>
+        <div class="scroll">
+          <table>
+            <caption>Projected coordinates in the three principal directions</caption>
+            <thead>
+              <tr>
+                <th>Point</th>
+                <th>Sentence</th>
+                <th>Cluster</th>
+                <th>PC1</th>
+                <th>PC2</th>
+                <th>PC3</th>
+              </tr>
+            </thead>
+            <tbody id="pointTable"></tbody>
+          </table>
+        </div>
+      </details>
+      <p class="why"><strong>Why this matters.</strong> Vectors make similarity measurable. Changing the features can
+        change which sentences look alike.</p>
+      <details>
+        <summary>Under the hood</summary>
+        <p class="hint" id="lexDesc"></p>
+        <p class="hint">Meaning averages word vectors with a lower weight for stop words. Nearby words choose the sense
+          of “python” and “bat”. Unknown words use signed, hashed character n-grams. Surface wording compares character
+          fragments of the whole sentence. PCA uses power iteration on centered vectors. K-means and cosine similarity
+          use the original vectors, so apparent distances in the projection can differ.</p>
+      </details>
+    </section>
+
+    <section class="stage" id="attention" aria-labelledby="title3">
+      <div class="stagetop">
+        <div>
+          <p class="kicker">STAGE 03 / 04</p>
+          <h2 id="title3">Attention</h2>
+          <p class="intro">Pick a token and see how it gathers information from the other tokens in the sentence.</p>
+        </div>
+      </div>
+      <article class="panel stack">
+        <div class="between">
+          <div class="subhead"><span class="glyph"><svg class="ico">
+                <use href="#i-attn" />
+              </svg></span>
+            <h3>Self-attention</h3>
+          </div><label class="tick"><input type="checkbox" id="causal" checked>Causal mask</label>
+        </div>
+        <div class="stack-sm"><label for="attText">Sentence <span class="meta">· shared with the
+              tokenizer</span></label><textarea id="attText" rows="2"></textarea>
+          <p class="warning warnempty" aria-live="polite" id="attWarn"></p>
+        </div>
+        <div class="attlayout">
+          <div>
+            <h4>Attention weights</h4>
+            <p class="hint">Rows ask, columns supply context. A brighter cell carries more weight.</p>
+            <div id="attHeat" class="heatwrap"></div><span class="meta" id="attSize"></span>
+          </div>
+          <div class="inspector">
+            <h4>Inside the selected cell</h4>
+            <p class="hint" id="attPair"></p>
+            <div id="attMath" class="mathlist" aria-live="polite"></div>
+            <details>
+              <summary>Projected vectors</summary>
+              <div id="attVectors" class="vectorlist"></div>
+            </details>
+          </div>
+        </div>
+      </article>
+      <p class="why"><strong>Why this matters.</strong> Attention allows each token to combine information from
+        different positions. In a causal model, it can only read its own position and earlier ones.</p>
+      <details>
+        <summary>Under the hood</summary>
+        <p class="hint">These teaching weights come from a toy setup, not a trained LLM’s attention. Each byte-pair
+          token gets a 16-dimensional teaching vector and a small sinusoidal position signal. Three fixed, seeded
+          matrices project it into 8-dimensional queries, keys and values. A stable row-wise softmax turns scaled scores
+          into weights that sum to one. The output is a weighted sum of value vectors.</p>
+      </details>
+    </section>
+
+    <section class="stage" id="prediction" aria-labelledby="title4">
+      <div class="stagetop">
+        <div>
+          <p class="kicker">STAGE 04 / 04</p>
+          <h2 id="title4">Next-token prediction</h2>
+          <p class="intro">Use the training corpus to estimate what comes next, then sample one token at a time.</p>
+        </div>
+      </div>
+      <div class="split">
+        <article class="panel stack" id="samplerPanel">
+          <div class="between">
+            <div class="subhead"><span class="glyph"><svg class="ico">
+                  <use href="#i-predict" />
+                </svg></span>
+              <h3>Sampling controls</h3>
+            </div><select id="order" aria-label="N-gram model order">
+              <option value="3">Trigram</option>
+              <option value="2">Bigram</option>
+            </select>
+          </div>
+          <div class="stack-sm"><label for="prompt">Starting text</label><input id="prompt" type="text" value="The"
+              spellcheck="false">
+            <p id="promptWarn" class="warning warnempty"></p>
+          </div>
+          <div class="sliderlist">
+            <div>
+              <div class="fieldtop"><label for="temp">Temperature</label><output id="tempValue" for="temp"></output>
+              </div><input type="range" min="0.1" max="2" step="0.05" value="1" id="temp">
+              <p class="hint">Lower values favor the most frequent next token. Higher values give alternatives more
+                weight.</p>
+            </div>
+            <div>
+              <div class="fieldtop"><label for="topk">Top-k</label><output id="topkValue" for="topk"></output></div>
+              <input type="range" min="0" max="32" value="0" id="topk">
+              <p class="hint">Keep at most this many of the highest-probability choices.</p>
+            </div>
+            <div>
+              <div class="fieldtop"><label for="topp">Top-p</label><output id="toppValue" for="topp"></output></div>
+              <input type="range" min="0.05" max="1" step="0.05" value="1" id="topp">
+              <p class="hint">Keep enough leading choices to reach this share of the probability.</p>
+            </div>
+          </div>
+        </article>
+        <article class="panel stack" id="predictionPanel">
+          <div class="between">
+            <h3>Next-token distribution</h3><span class="pill" id="lmBadge"></span>
+          </div>
+          <div id="bars" class="bars" aria-label="Next-token probabilities"></div>
+          <p id="distNote" class="hint"></p>
+          <hr class="rule">
+          <h4>Generated text</h4>
+          <div id="generation" class="generation"></div>
+          <div class="tools"><button class="primary" id="generate"><svg class="ico">
+                <use href="#i-play" />
+              </svg><span id="generateLabel">Generate</span></button><button id="oneToken">Sample one</button><button
+              id="resetLM" class="quiet">Reset</button></div>
+          <p id="lmStatus" class="meta" aria-live="polite"></p>
+        </article>
+      </div>
+      <p class="why"><strong>Why this matters.</strong> A probability distribution can yield different continuations.
+        Sampling settings determine how often rare choices appear.</p>
+      <details>
+        <summary>Under the hood</summary>
+        <p class="hint">Each nonempty corpus line is a training sequence with start and end markers. A trigram uses the
+          previous two tokens. Unseen contexts back off to one token, then to corpus-wide counts. Sampling applies
+          temperature to log counts, keeps the top k choices, then keeps the smallest prefix reaching top-p of the
+          remaining probability. The survivors are renormalized. Generation stops at an end marker or 24 sampled tokens.
+        </p>
+      </details>
+    </section>
+
+  </main>
+
+  <footer class="wrap foot between"><span>LLM Pipeline Explorer 2</span><button class="quiet" id="footerAbout">About
+      this lab</button></footer>
+
+  <dialog id="about" aria-labelledby="aboutTitle">
+    <div class="dialogtop between">
+      <div class="subhead"><span class="glyph"><svg class="ico">
+            <use href="#i-book" />
+          </svg></span>
+        <h2 id="aboutTitle">About this lab</h2>
+      </div><button class="iconbtn quiet" data-close="about" aria-label="Close About">×</button>
+    </div>
+    <div class="doc">
+      <p>LLM Pipeline Explorer 2 is a single-file, offline experiment. The four stages let you inspect the arithmetic
+        behind common language-model operations.</p>
+      <h3>What the stages teach</h3>
+      <p><strong>Tokenizer.</strong> Train real byte-pair encoding on a corpus. The base vocabulary has 256 byte IDs
+        plus two reserved markers. The slider chooses a prefix of the learned merge list. Replay shows the winning pair
+        at each step. Change the corpus and choose Build vocabulary to apply edits.</p>
+      <p><strong>Embeddings.</strong> Compare <span id="wordEntryCount"></span> hand-written word entries across 16
+        feature dimensions, or switch to a 64-dimensional hashed spelling representation. Colors come from deterministic
+        k-means. Hover over a point or select its ID to inspect the full sentence. Neighbor scores and the heatmap use
+        cosine similarity before 3D projection.</p>
+      <p><strong>Attention.</strong> The encoder and attention share a sentence. Select a cell to inspect query–key
+        multiplication, scaling, softmax and the weighted sum of values. Removing the causal mask lets tokens attend in
+        both directions.</p>
+      <p><strong>Next token.</strong> The sampler uses the tokenizer’s active BPE vocabulary on the applied corpus. It
+        learns counts per line. Adjust the order, temperature and filters to explore alternative continuations. Sampling
+        uses fresh randomness on each draw.</p>
+      <h3>Design choices and limits</h3>
+      <p>These are connected teaching experiments. The embeddings are hand-assigned, the attention projections are
+        seeded random weights, and the predictor is a separate count model. The predictor uses corpus statistics
+        independently of the attention output.</p>
+      <p>BPE segments text into word-like runs, numbers, punctuation and whitespace. A leading space can join the next
+        word. Ties use the first pair observed. Training stops after 144 merges or when no adjacent pair occurs twice.
+        Raw character counts use Unicode code points. Chars per token is a sequence-length ratio. JSON exports include
+        original bytes for lossless decoding. Sequence markers are excluded from encoder counts. The word baseline
+        ignores whitespace and counts punctuation separately.</p>
+      <p>The English teaching lexicon groups related words into shared feature profiles. Five words on either side
+        provide sense context. Ties choose the animal sense. Unknown words, punctuation and other languages fall back to
+        character fragments. Hash collisions and shared feature profiles can produce close or overlapping points. PCA
+        retains the first three directions, and k-means can find fewer distinct centers than requested.</p>
+      <p>To keep interaction quick, the lab accepts 5,000 corpus characters, 400 per encoder sentence or generation
+        prompt, and 24 plot points of up to 160 characters. Attention displays the first 24 tokens. Generation stops at
+        24 samples or an end marker. An incomplete UTF-8 byte sequence may appear as a pending fragment during
+        generation.</p>
+      <h3>Controls, sharing and checks</h3>
+      <p>Tab through controls. Use arrow keys in a matrix. With the plot focused, use arrow keys to orbit and + or − to
+        zoom. On touchscreens, drag with one finger or pinch with two. The point table and neighbor list provide text
+        alternatives to the plot.</p>
+      <p>Share writes the current experiment to the URL fragment, including your custom text. A hosted link opens the
+        same experiment for another reader. For separate local copies, append the shared fragment to the other file’s
+        address. Theme and tour preference are stored on this device when storage is available.</p>
+      <p>Export the active tokens and merges as JSON, full embedding vectors and coordinates as CSV, or the canvas view
+        as PNG. Open the file with <code>#test</code> at the end of its address to run the built-in checks. All
+        calculations and exports run in your browser.</p>
+    </div>
+  </dialog>
+  <dialog id="share" aria-labelledby="shareTitle">
+    <div class="dialogtop between">
+      <h2 id="shareTitle">Share this experiment</h2><button class="iconbtn quiet" data-close="share"
+        aria-label="Close share panel">×</button>
+    </div>
+    <div class="doc stack">
+      <p>The link includes your settings and custom text. For local copies in different folders, copy the fragment and
+        append it to the other file’s address.</p><label for="shareUrl">Experiment address</label><input readonly
+        type="text" id="shareUrl">
+      <div class="tools"><button class="primary" id="copyUrl">Copy link</button><button id="copyFragment">Copy
+          fragment</button></div>
+      <p class="hint" aria-live="polite" id="copyStatus"></p>
+    </div>
+  </dialog>
+  <section id="tourCard" role="region" aria-labelledby="tourTitle" hidden>
+    <div class="between"><span id="tourCount" class="kicker"></span><button id="endTour" class="quiet"
+        aria-label="Close guided tour">Close</button></div>
+    <h3 id="tourTitle"></h3>
+    <p id="tourBody" class="hint"></p>
+    <div class="tools"><button id="tourBack" class="quiet">Back</button><button class="primary"
+        id="tourNext">Next</button></div>
+  </section>
+
+  <script>
+'use strict';
+(() => {
+    const by = id => document.getElementById(id);
+    const all = selector => Array.from(document.querySelectorAll(selector));
+    function el(tag, text, cls) {
+        const node = document.createElement(tag);
+        if (text !== undefined)
+            node.textContent = text;
+        if (cls)
+            node.className = cls;
+        return node;
+    }
+    function debounce(fn, ms = 130) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), ms);
+        };
+    }
+    function bounded(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+    const utf8 = new TextEncoder(), decoder = new TextDecoder('utf-8', { ignoreBOM: true }), strictDecoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+    const BOS = 256, EOS = 257, BASE = 258, MAX_CORPUS = 5000, MAX_SENTENCE = 400;
+    function cut(text, n) {
+        if (text.length <= n)
+            return text;
+        let end = 0, count = 0;
+        for (const character of text) {
+            if (count === n)
+                break;
+            end += character.length;
+            count++;
+        }
+        return text.slice(0, end);
+    }
+    function limitInput(id, n, warn) {
+        const input = by(id), short = cut(input.value, n);
+        const overflow = short !== input.value;
+        if (overflow)
+            input.value = short;
+        by(warn).textContent = overflow ? 'Input shortened to ' + n + ' Unicode characters.' : '';
+        return short;
+    }
+    function paintCanvas(canvas, fn) {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width < 2 || rect.height < 2)
+            return;
+        const dpr = Math.min(devicePixelRatio || 1, 2), w = rect.width, h = rect.height;
+        const px = Math.round(w * dpr), py = Math.round(h * dpr);
+        if (canvas.width !== px || canvas.height !== py) {
+            canvas.width = px;
+            canvas.height = py;
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        fn(ctx, w, h);
+    }
+    function css(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue('--' + name).trim();
+    }
+    function download(name, blob) {
+        const url = URL.createObjectURL(blob), a = el('a');
+        a.download = name;
+        a.href = url;
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+    function seeded(seed) {
+        return () => {
+            seed = (Math.imul(1664525, seed) + 1013904223) >>> 0;
+            return seed / 4294967296;
+        };
+    }
+    // TOKENIZER — rank-ordered byte-pair encoding within word-like segments.
+    const corpora = {
+        english: `The curious cat sat on the mat.
+The curious dog sat by the door.
+The quiet cat sleeps on the warm mat.
+The little dog sleeps by the warm fire.
+A curious kitten watches the garden birds.
+A quiet kitten watches the cat.
+The cat sat by the window.
+The dog sat on the mat.`,
+        code: `function sum(items) { return items.reduce(add, 0); }
+function add(a, b) { return a + b; }
+const items = [1, 2, 3]; const total = sum(items);
+function double(items) { return items.map(x => x + x); }
+const result = double(items);`,
+        multi: `The cat sleeps. The dog sleeps. The cat plays.
+बिल्ली सोती है। कुत्ता सोता है। बिल्ली खेलती है।
+Le chat dort. Le chien dort. Le chat joue.
+猫在睡觉。狗在睡觉。猫在玩。 🐈 🐕 🐈`
+    };
+    function segments(text) {
+        return text.match(/ ?\p{L}[\p{L}\p{M}]*| ?\p{N}+| ?[^\s\p{L}\p{M}\p{N}]+|\s+/gu) || [];
+    }
+    function joinPair(seq, a, b, id) {
+        const out = [];
+        for (let i = 0; i < seq.length; i++) {
+            if (seq[i] === a && seq[i + 1] === b) {
+                out.push(id);
+                i++;
+            }
+            else
+                out.push(seq[i]);
+        }
+        return out;
+    }
+    function trainBPE(text, maxMerges = 144) {
+        let seqs = segments(text).map(s => Array.from(utf8.encode(s)));
+        const bytes = Array.from({ length: BASE }, (_, i) => i < 256 ? [i] : []), merges = [], counts = [seqs.reduce((n, s) => n + s.length, 0)];
+        for (let i = 0; i < maxMerges; i++) {
+            const freq = new Map();
+            for (const seq of seqs)
+                for (let j = 1; j < seq.length; j++) {
+                    const key = seq[j - 1] * 1024 + seq[j];
+                    freq.set(key, (freq.get(key) || 0) + 1);
+                }
+            let winner = -1, best = 1;
+            for (const [key, n] of freq)
+                if (n > best) {
+                    best = n;
+                    winner = key;
+                }
+            if (winner < 0)
+                break;
+            const a = Math.floor(winner / 1024), b = winner % 1024, id = BASE + i;
+            seqs = seqs.map(s => joinPair(s, a, b, id));
+            bytes.push([...bytes[a], ...bytes[b]]);
+            merges.push({ a, b, id, frequency: best });
+            counts.push(seqs.reduce((n, s) => n + s.length, 0));
+        }
+        return { bytes, merges, counts };
+    }
+    function encode(text, model, steps) {
+        const seqs = segments(text).map(s => Array.from(utf8.encode(s)));
+        return seqs.flatMap(seq => {
+            for (const m of model.merges.slice(0, steps)) {
+                if (seq.length < 2)
+                    break;
+                seq = joinPair(seq, m.a, m.b, m.id);
+            }
+            return seq;
+        });
+    }
+    function showToken(id, model, spaces = true) {
+        if (id === BOS)
+            return '⟨BOS⟩';
+        if (id === EOS)
+            return '⟨EOS⟩';
+        const bytes = model.bytes[id];
+        let str;
+        try {
+            str = strictDecoder.decode(Uint8Array.from(bytes));
+        }
+        catch {
+            return bytes.map(b => '⟨' + b.toString(16).toUpperCase().padStart(2, '0') + '⟩').join('');
+        }
+        return spaces ? str.replaceAll(' ', '␠').replaceAll('\n', '↵').replaceAll('\t', '⇥').replaceAll('\r', '␍') : str;
+    }
+    let model, step = 0, encoded = [], builtText = '', replayTimer = 0;
+    function stopReplay() {
+        clearInterval(replayTimer);
+        replayTimer = 0;
+        by('replayPlay').textContent = 'Play replay';
+    }
+    function chip(text, i) {
+        return el('span', text, 'chip t' + (i % 5));
+    }
+    function renderCompare() {
+        const s = by('sentence').value, small = Math.floor(step / 2), modes = [['Characters', Array.from(s)], ['Words & punctuation', s.match(/\p{L}[\p{L}\p{M}]*|\p{N}+|[^\s]/gu) || []], ['BPE · ' + (BASE + small), encode(s, model, small).map(id => showToken(id, model))], ['BPE · ' + (BASE + step), encoded.map(id => showToken(id, model))]];
+        const nodes = modes.map(([name, pieces]) => {
+            const box = el('div', undefined, 'comparebox'), list = el('div', undefined, 'chips');
+            box.append(el('h4', name), el('small', pieces.length + ' pieces', 'meta'), list);
+            pieces.slice(0, 40).forEach((t, i) => list.append(chip(t, i)));
+            if (pieces.length > 40)
+                list.append(el('span', '…'));
+            return box;
+        });
+        by('compare').replaceChildren(...nodes);
+    }
+    function renderEncoder() {
+        const s = by('sentence').value, visible = by('visible').checked;
+        encoded = encode(s, model, step);
+        const shown = visible ? [BOS, ...encoded, EOS] : encoded;
+        by('tokenCount').textContent = encoded.length + ' tokens';
+        by('rawSize').textContent = Array.from(s).length;
+        const words = (s.match(/[\p{L}\p{N}][\p{L}\p{M}\p{N}]*/gu) || []).length;
+        by('tpw').textContent = words ? (encoded.length / words).toFixed(2) : '—';
+        by('compression').textContent = encoded.length ? (Array.from(s).length / encoded.length).toFixed(2) + '×' : '—';
+        by('tokenInfo').textContent = 'Select a token to inspect its ID and bytes.';
+        const nodes = shown.map((id, i) => {
+            const label = showToken(id, model, visible), b = el('button', label, 'chip t' + (id % 5)), desc = 'ID ' + id + ' · ' + (id === BOS || id === EOS ? 'sequence marker' : model.bytes[id].map(v => v.toString(16).padStart(2, '0')).join(' '));
+            b.title = desc;
+            b.tabIndex = i === 0 ? 0 : -1;
+            b.onkeydown = e => {
+                let next = i;
+                if (e.key === 'ArrowRight')
+                    next = Math.min(i + 1, nodes.length - 1);
+                else if (e.key === 'ArrowLeft')
+                    next = Math.max(0, i - 1);
+                else if (e.key === 'Home')
+                    next = 0;
+                else if (e.key === 'End')
+                    next = nodes.length - 1;
+                else
+                    return;
+                e.preventDefault();
+                b.tabIndex = -1;
+                nodes[next].tabIndex = 0;
+                nodes[next].focus();
+            };
+            b.setAttribute('aria-label', 'Token ' + (i + 1) + ' ' + showToken(id, model) + ' ' + desc);
+            b.onfocus = b.onpointerenter = b.onclick = () => by('tokenInfo').textContent = desc;
+            return b;
+        });
+        by('tokens').replaceChildren(...(nodes.length ? nodes : [el('span', 'Enter text to see its tokens.', 'hint')]));
+        if (by('comparePanel').open)
+            renderCompare();
+    }
+    function drawCurve() {
+        paintCanvas(by('bpeChart'), (c, w, h) => {
+            const data = model.counts, L = 36, R = w - 12, T = 12, B = h - 19, max = data[0] || 1, min = data.at(-1) || 0, x = i => L + i * (R - L) / Math.max(1, data.length - 1), y = v => B - (v - min) * (B - T) / Math.max(1, max - min);
+            c.font = '11px monospace';
+            c.fillStyle = css('dim');
+            c.strokeStyle = css('line');
+            for (const n of new Set([min, max])) {
+                c.fillText(String(n), 1, y(n) + 3);
+                c.beginPath();
+                c.moveTo(L, y(n));
+                c.lineTo(R, y(n));
+                c.stroke();
+            }
+            c.beginPath();
+            data.forEach((n, i) => i ? c.lineTo(x(i), y(n)) : c.moveTo(x(i), y(n)));
+            c.strokeStyle = css('purple');
+            c.lineWidth = 2;
+            c.stroke();
+            c.lineTo(x(data.length - 1), B);
+            c.lineTo(L, B);
+            c.closePath();
+            c.fillStyle = css('purple') + '18';
+            c.fill();
+            c.fillStyle = css('mint');
+            c.beginPath();
+            c.arc(x(step), y(data[step]), 4, 0, 7);
+            c.fill();
+            c.fillStyle = css('dim');
+            c.fillText(String(BASE), L, B + 15);
+            c.textAlign = 'right';
+            c.fillText(String(BASE + data.length - 1), R, B + 15);
+        });
+    }
+    function updateVocabulary(n) {
+        step = bounded(Math.round(n), 0, model.merges.length);
+        by('vocab').value = BASE + step;
+        by('vocabValue').textContent = (BASE + step) + ' symbols';
+        by('vocabMax').textContent = (BASE + model.merges.length) + ' trained';
+        const m = model.merges[step - 1];
+        by('mergeStatus').textContent = m ? 'Merge ' + step + ' of ' + model.merges.length + ' · ' + showToken(m.a, model) + ' + ' + showToken(m.b, model) + ' → ' + showToken(m.id, model) + ' (' + m.frequency + ' adjacent pairs)' : 'Base vocabulary · Every piece starts as one UTF-8 byte.';
+        by('corpusTokens').textContent = model.counts[step] + ' tokens';
+        by('bpeChart').setAttribute('aria-label', 'Corpus tokens fall from ' + model.counts[0] + ' at ' + BASE + ' symbols to ' + model.counts.at(-1) + ' at ' + (BASE + model.merges.length) + ' symbols. Current count ' + model.counts[step] + '.');
+        by('replayStep').disabled = step === model.merges.length;
+        by('replayPlay').disabled = !model.merges.length;
+        by('mergeList').replaceChildren(...model.merges.map((m, i) => el('li', showToken(m.a, model) + ' + ' + showToken(m.b, model) + ' → ' + showToken(m.id, model) + ' · ' + m.frequency + ' pairs', i < step ? 'mergeitem active' : 'mergeitem')));
+        by('example').textContent = 'At this size, “zebra” encodes as ' + encode('zebra', model, step).map(id => showToken(id, model)).join(' · ') + '.';
+        by('languageCost').textContent = ['cat', 'बिल्ली', '猫', '🐈'].map(s => s + ' → ' + encode(s, model, step).length + ' tokens').join('   /   ') + '. Script, UTF-8 length and corpus coverage all affect cost.';
+        renderEncoder();
+        requestAnimationFrame(drawCurve);
+        onVocabularyChanged();
+    }
+    function buildCorpus(target) {
+        stopReplay();
+        builtText = limitInput('corpus', MAX_CORPUS, 'corpusWarn');
+        model = trainBPE(builtText);
+        by('vocab').max = BASE + model.merges.length;
+        by('corpusStatus').textContent = model.merges.length + ' merges learned';
+        updateVocabulary(target === undefined ? Math.round(model.merges.length * .76) : target);
+    }
+    function initTokenizer() {
+        by('corpusPreset').onchange = () => {
+            const s = corpora[by('corpusPreset').value];
+            if (s !== undefined) {
+                by('corpus').value = s;
+                buildCorpus();
+            }
+            else {
+                by('corpus').focus();
+                by('corpusStatus').textContent = 'Edit, then build';
+            }
+        };
+        by('corpus').oninput = () => {
+            by('corpusPreset').value = 'custom';
+            limitInput('corpus', MAX_CORPUS, 'corpusWarn');
+            by('corpusStatus').textContent = 'Edits pending · build to apply';
+        };
+        by('build').onclick = () => buildCorpus();
+        by('vocab').oninput = () => {
+            stopReplay();
+            updateVocabulary(+by('vocab').value - BASE);
+        };
+        by('sentence').oninput = debounce(() => {
+            limitInput('sentence', MAX_SENTENCE, 'sentenceWarn');
+            renderEncoder();
+            onSentenceChanged();
+        });
+        by('visible').onchange = renderEncoder;
+        by('comparePanel').ontoggle = () => {
+            if (by('comparePanel').open)
+                renderCompare();
+        };
+        by('replayReset').onclick = () => {
+            stopReplay();
+            updateVocabulary(0);
+        };
+        by('replayStep').onclick = () => {
+            stopReplay();
+            updateVocabulary(step + 1);
+        };
+        by('replayPlay').onclick = () => {
+            if (replayTimer) {
+                stopReplay();
+                return;
+            }
+            if (step === model.merges.length)
+                updateVocabulary(0);
+            by('replayPlay').textContent = 'Pause replay';
+            replayTimer = setInterval(() => {
+                updateVocabulary(step + 1);
+                if (step === model.merges.length)
+                    stopReplay();
+            }, 500);
+        };
+        by('jsonExport').onclick = () => {
+            renderEncoder();
+            download('pipeline-tokens.json', new Blob([JSON.stringify({ corpus: builtText, input: by('sentence').value, vocabularySize: BASE + step, tokens: encoded.map(id => ({ id, piece: showToken(id, model), bytes: model.bytes[id] })), merges: model.merges.slice(0, step).map(m => ({ ...m, piece: showToken(m.id, model) })) }, null, 2)], { type: 'application/json' }));
+        };
+    }
+    // EMBEDDINGS — each lexicon entry inherits its hand-assigned feature profile.
+    const features = ['animal', 'companion', 'wild', 'reptile', 'household', 'technology', 'programming', 'finance', 'nature', 'movement', 'emotion', 'sports', 'object', 'human', 'food', 'language'];
+    const lex = new Map();
+    function profile(spec) {
+        const v = features.map(() => 0);
+        for (const [name, n] of Object.entries(spec))
+            v[features.indexOf(name)] = n;
+        return v;
+    }
+    function words(list, spec) {
+        const vector = profile(spec);
+        for (const w of list.split(' '))
+            lex.set(w, vector);
+    }
+    words('cat kitten feline kitty purr purrs meow whiskers kittens cats', { animal: 1, companion: 1, household: .8 });
+    words('dog puppy canine hound bark barks leash retriever dogs puppies', { animal: 1, companion: 1, household: .55, movement: .25 });
+    words('rabbit hamster parrot goldfish guinea pets pet tame lap cuddle', { animal: .8, companion: 1, household: .5 });
+    words('lion tiger bear deer fox wolf monkey elephant zebra giraffe', { animal: 1, wild: 1, nature: .7 });
+    words('bird birds owl eagle sparrow robin wings feathers nest crow', { animal: 1, wild: .8, nature: .6, movement: .5 });
+    words('snake snakes viper cobra boa lizard reptile scales slither slithers', { animal: .9, wild: .85, reptile: 1, nature: .65 });
+    words('cave caves nocturnal roost colony moth insect dusk night echolocation', { wild: 1, animal: .55, nature: .8 });
+    words('home house room mat rug bed sofa chair table door', { household: 1, object: .8 });
+    words('kitchen window garden floor blanket pillow shelf lamp porch carpet', { household: 1, object: .6, nature: .15 });
+    words('sit sits sat sleep sleeps sleeping rest rests curl curled', { household: .6, companion: .4, movement: .12 });
+    words('run runs running jump jumps walk walks fly flew flies', { movement: 1, nature: .25 });
+    words('swim crawl climb slide move moves chase chases swing swings', { movement: 1, sports: .25 });
+    words('computer laptop chip processor keyboard hardware server screen device network', { technology: 1, object: .65 });
+    words('code coding program programming software script compile compiler function functions', { technology: .85, programming: 1 });
+    words('developer programmer debug debugging variable loop algorithm library package syntax', { programming: 1, technology: .65, human: .15 });
+    words('javascript java rust html css browser data array string integer', { programming: .9, technology: .8, language: .35 });
+    words('bank banks loan loans credit debt interest lender mortgage savings', { finance: 1, human: .15 });
+    words('stock stocks bond market markets trade trading investor investment portfolio', { finance: 1, movement: .15 });
+    words('money cash coin budget price profit payment dollar salary fund', { finance: 1, object: .2 });
+    words('forest tree leaf grass river mountain lake ocean field meadow', { nature: 1, wild: .6 });
+    words('sun moon rain wind water cloud sky earth rock sand', { nature: 1, object: .22 });
+    words('happy glad love joy smile calm excited sad fear angry', { emotion: 1, human: .65 });
+    words('game team sport sports baseball cricket ball pitch hitter batter', { sports: 1, movement: .55, human: .25 });
+    words('stadium coach player score match league glove inning swingball racket', { sports: 1, human: .45, object: .25 });
+    words('cup bottle box book pen paper phone bag key clock', { object: 1, household: .5 });
+    words('child friend teacher parent student family person people worker farmer', { human: 1, emotion: .2 });
+    words('apple bread rice milk fish soup fruit cake coffee tea', { food: 1, household: .3 });
+    words('word sentence text letter story language read write poem speech', { language: 1, human: .4 });
+    const inflections = { writes: 'write', reads: 'read', debugs: 'debug', trades: 'trade', lenders: 'lender', baseballs: 'baseball', investors: 'investor', climbs: 'climb', crawls: 'crawl', slithering: 'slither', programs: 'program' };
+    for (const [word, base] of Object.entries(inflections))
+        lex.set(word, lex.get(base));
+    words('offers plays watches hunts', { human: .17, movement: .18 });
+    const senses = { python: [profile({ reptile: 1, wild: .9, animal: .9, nature: .6 }), profile({ programming: 1, technology: .85, language: .3 })], bat: [profile({ animal: .85, wild: 1, nature: .6, movement: .45 }), profile({ sports: 1, object: .7, movement: .35 })] };
+    const stops = new Set('a an the on in of is by to and or with it its that this at from was are for i we my your have has as'.split(' '));
+    const dim = v => Array(v).fill(0);
+    const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
+    const magnitude = v => Math.sqrt(dot(v, v));
+    function unit(v) {
+        const n = magnitude(v);
+        return n ? v.map(x => x / n) : v.slice();
+    }
+    function cosine(a, b) {
+        const n = magnitude(a) * magnitude(b);
+        return n ? bounded(dot(a, b) / n, -1, 1) : 0;
+    }
+    function hash(text) {
+        let h = 2166136261;
+        for (const c of text) {
+            h = Math.imul(h ^ c.codePointAt(0), 16777619);
+        }
+        return h >>> 0;
+    }
+    function grams(text, d = 64) {
+        const chars = ['^', ...text.normalize('NFKC').toLowerCase(), '$'], v = dim(d);
+        for (const n of [2, 3, 4])
+            for (let i = 0; i + n <= chars.length; i++) {
+                const h = hash(chars.slice(i, i + n).join(''));
+                v[h % d] += (h >>> 11) & 1 ? 1 : -1;
+            }
+        return unit(v);
+    }
+    function wordParts(s) {
+        return s.normalize('NFKC').toLowerCase().match(/[\p{L}\p{M}\p{N}]+|[^\s]/gu) || [];
+    }
+    function embed(text, mode = 'meaning') {
+        if (mode === 'surface')
+            return { v: grams(text), notes: [] };
+        const terms = wordParts(text), v = dim(features.length), notes = [];
+        let sum = 0;
+        terms.forEach((w, i) => {
+            let vec = lex.get(w);
+            if (Object.hasOwn(senses, w)) {
+                const context = dim(features.length);
+                terms.slice(Math.max(0, i - 5), i + 6).forEach(t => {
+                    const a = lex.get(t);
+                    if (a)
+                        a.forEach((value, k) => context[k] += value);
+                });
+                const index = cosine(context, senses[w][1]) > cosine(context, senses[w][0]) ? 1 : 0;
+                vec = senses[w][index];
+                notes.push(w + ' → ' + (w === 'bat' ? ['flying mammal', 'sports equipment'] : ['snake', 'programming language'])[index]);
+            }
+            const weight = stops.has(w) ? .12 : /^[\p{L}\p{M}\p{N}]/u.test(w) ? 1 : .15;
+            vec = vec || grams(w, features.length);
+            vec.forEach((x, k) => v[k] += x * weight);
+            sum += weight;
+        });
+        return { v: sum ? v.map(x => x / sum) : v, notes };
+    }
+    // PCA — centered covariance, orthogonal power iteration and Rayleigh quotients.
+    function pca(rows) {
+        const n = rows.length, d = rows[0]?.length || 0;
+        if (!n)
+            return { points: [], retained: 0 };
+        const mean = dim(d);
+        rows.forEach(r => r.forEach((v, j) => mean[j] += v / n));
+        const centered = rows.map(r => r.map((v, j) => v - mean[j])), cov = Array.from({ length: d }, () => dim(d));
+        for (const r of centered)
+            for (let i = 0; i < d; i++)
+                for (let j = 0; j <= i; j++)
+                    cov[i][j] += r[i] * r[j] / n;
+        for (let i = 0; i < d; i++)
+            for (let j = 0; j < i; j++)
+                cov[j][i] = cov[i][j];
+        const trace = cov.reduce((s, r, j) => s + r[j], 0), axes = [], rng = seeded(98123);
+        let kept = 0;
+        for (let k = 0; k < 3; k++) {
+            let v = unit(dim(d).map(() => rng() - .5));
+            for (let iter = 0; iter < 100; iter++) {
+                let z = cov.map(row => dot(row, v));
+                for (const axis of axes) {
+                    const proj = dot(z, axis);
+                    z = z.map((a, j) => a - proj * axis[j]);
+                }
+                if (magnitude(z) < 1e-11) {
+                    v = dim(d);
+                    break;
+                }
+                const u = unit(z), change = 1 - Math.abs(dot(u, v));
+                v = u;
+                if (change < 1e-12)
+                    break;
+            }
+            const pivot = v.reduce((a, b) => Math.abs(a) > Math.abs(b) ? a : b, 0);
+            if (pivot < 0)
+                v = v.map(x => -x);
+            axes.push(v);
+            kept += dot(v, cov.map(r => dot(r, v)));
+        }
+        return { points: centered.map(r => axes.map(v => dot(r, v))), retained: trace ? bounded(kept / trace, 0, 1) : 0 };
+    }
+    // KMEANS — deterministic farthest-first seeds and Euclidean Lloyd updates.
+    function distance2(a, b) {
+        return a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0);
+    }
+    function kmeans(rows, k) {
+        if (!rows.length)
+            return { labels: [], centers: [] };
+        let centers = [rows[0].slice()];
+        while (centers.length < Math.min(k, rows.length)) {
+            const distances = rows.map(r => Math.min(...centers.map(c => distance2(r, c)))), best = Math.max(...distances);
+            if (best < 1e-12)
+                break;
+            centers.push(rows[distances.indexOf(best)].slice());
+        }
+        let labels = rows.map(() => -1);
+        for (let iter = 0; iter < 70; iter++) {
+            const next = rows.map(row => {
+                const ds = centers.map(c => distance2(row, c));
+                return ds.indexOf(Math.min(...ds));
+            });
+            if (next.every((v, i) => v === labels[i]))
+                break;
+            labels = next;
+            const sums = centers.map(c => dim(c.length)), counts = dim(centers.length);
+            rows.forEach((row, i) => {
+                counts[labels[i]]++;
+                row.forEach((x, j) => sums[labels[i]][j] += x);
+            });
+            centers = sums.map((s, i) => counts[i] ? s.map(x => x / counts[i]) : centers[i]);
+        }
+        return { labels, centers };
+    }
+    const groups = {
+        mixed: ['The cat sat on the mat.', 'The kitten sleeps on the rug.', 'The python slithers in the forest.', 'The snake rests in the grass.', 'The developer writes Python code.', 'A programmer debugs a function.', 'The bank offers a loan.', 'The investor trades stocks.'],
+        home: ['The cat sat on the mat.', 'The bat sat on the mat.', 'A kitten sleeps on the sofa.', 'The puppy sits by the door.', 'The dog rests on the rug.', 'An owl flies over the forest.', 'The lamp is on the table.', 'A bat sleeps in a cave.'],
+        python: ['Python code runs in a loop.', 'The python slithers in the grass.', 'A developer debugs a Python function.', 'A cobra crawls through the forest.', 'JavaScript runs in the browser.', 'A snake has scales.', 'Python syntax uses a variable.', 'The python rests by the river.'],
+        finance: ['The bank offers a loan.', 'The lender earns interest.', 'An investor trades stocks.', 'The market price moves.', 'A family saves money.', 'The budget covers the payment.', 'A child plays a game.', 'The kitten sits on a chair.'],
+        bat: ['A bat flew out of the cave.', 'The bat roosts with the colony.', 'A nocturnal bat hunts an insect.', 'The batter swings the bat.', 'A baseball bat hits the ball.', 'The player has a bat and glove.', 'The cat sat on the mat.', 'The bat sat on the mat.']
+    };
+    const MAX_POINTS = 24, MAX_POINT_CHARS = 160, palette = ['purple', 'mint', 'amber', 'blue', 'rose', 'dim'];
+    let custom = [], mode = 'meaning', points = [], groupsNow = [], projected = [], similarities = [], selected = 0, peer = null, embedReady = false;
+    const pointID = i => 'P' + String(i + 1).padStart(2, '0');
+    function colorFor(i) {
+        return css(palette[i % palette.length]);
+    }
+    function matrix(root, values, names, label, color, onPick, active, showNumbers = false) {
+        const table = el('table', undefined, 'heattable'), thead = el('thead'), head = el('tr');
+        table.setAttribute('aria-label', label);
+        head.append(el('th', ''));
+        names.forEach(name => {
+            const th = el('th', name);
+            th.scope = 'col';
+            th.title = name;
+            head.append(th);
+        });
+        thead.append(head);
+        const body = el('tbody');
+        let current = null;
+        const buttons = [];
+        function select(r, c, focus = false) {
+            if (current) {
+                current.tabIndex = -1;
+                current.setAttribute('aria-pressed', 'false');
+            }
+            current = buttons[r][c];
+            current.tabIndex = 0;
+            current.setAttribute('aria-pressed', 'true');
+            if (focus)
+                current.focus();
+            onPick(r, c);
+        }
+        values.forEach((row, r) => {
+            const tr = el('tr'), th = el('th', names[r]);
+            th.scope = 'row';
+            th.title = names[r];
+            tr.append(th);
+            buttons[r] = [];
+            row.forEach((v, c) => {
+                const td = el('td'), b = el('button', showNumbers && v !== null ? v.toFixed(2) : '', 'heatcell');
+                b.style.backgroundColor = color(v);
+                const hint = names[r] + ' × ' + names[c] + ' · ' + (v === null ? 'masked' : v.toFixed(4));
+                b.title = hint;
+                b.setAttribute('aria-label', hint);
+                b.tabIndex = -1;
+                b.setAttribute('aria-pressed', 'false');
+                b.onclick = () => select(r, c);
+                b.onkeydown = e => {
+                    const moves = { ArrowRight: [r, c + 1], ArrowLeft: [r, c - 1], ArrowDown: [r + 1, c], ArrowUp: [r - 1, c], Home: [r, 0], End: [r, row.length - 1] };
+                    if (!Object.hasOwn(moves, e.key))
+                        return;
+                    e.preventDefault();
+                    const [nr, nc] = moves[e.key];
+                    select(bounded(nr, 0, values.length - 1), bounded(nc, 0, row.length - 1), true);
+                };
+                buttons[r].push(b);
+                td.append(b);
+                tr.append(td);
+            });
+            body.append(tr);
+        });
+        table.append(thead, body);
+        root.replaceChildren(table);
+        if (values.length) {
+            current = buttons[active[0]][active[1]];
+            current.tabIndex = 0;
+            current.setAttribute('aria-pressed', 'true');
+        }
+    }
+    function computePoints() {
+        const sentences = [...groups[by('group').value], ...custom];
+        points = sentences.map(s => ({ text: s, ...embed(s, mode) }));
+        const rows = points.map(p => p.v), projection = pca(rows);
+        projected = projection.points;
+        groupsNow = kmeans(rows, +by('clusters').value).labels;
+        similarities = rows.map(a => rows.map(b => cosine(a, b)));
+        selected = bounded(selected, 0, points.length - 1);
+        if (peer >= points.length)
+            peer = null;
+        by('kValue').textContent = by('clusters').value;
+        by('pcaReadout').textContent = '3D PCA · ' + (100 * projection.retained).toFixed(1) + '% variance';
+        by('pointCount').textContent = points.length + ' / ' + MAX_POINTS + ' points';
+        by('pointSelect').replaceChildren(...points.map((p, i) => {
+            const o = el('option', pointID(i) + ' · ' + p.text);
+            o.value = i;
+            return o;
+        }));
+        by('legend').replaceChildren(...Array.from(new Set(groupsNow)).sort().map(k => {
+            const s = el('span'), d = el('i', undefined, 'dot');
+            d.style.background = colorFor(k);
+            s.append(d, 'Cluster ' + (k + 1));
+            return s;
+        }));
+        by('pointTable').replaceChildren(...points.map((p, i) => {
+            const row = el('tr');
+            [pointID(i), p.text, groupsNow[i] + 1, ...projected[i].map(x => x.toFixed(3))].forEach(value => row.append(el('td', value)));
+            return row;
+        }));
+        by('customPoints').replaceChildren(...custom.map((s, i) => {
+            const item = el('div', undefined, 'customitem'), b = el('button', '×');
+            b.setAttribute('aria-label', 'Remove ' + s);
+            b.onclick = () => {
+                custom.splice(i, 1);
+                selected = 0;
+                peer = null;
+                computePoints();
+            };
+            item.append(el('span', s), b);
+            return item;
+        }));
+        refreshSelection();
+        renderSimilarity();
+        schedulePlot();
+    }
+    function refreshSelection() {
+        by('pointSelect').value = selected;
+        const ns = similarities[selected].map((v, i) => ({ v, i })).filter(p => p.i !== selected).sort((a, b) => b.v - a.v || a.i - b.i).slice(0, 5);
+        by('neighbors').replaceChildren(...ns.map(p => {
+            const b = el('button', undefined, 'neighbor');
+            b.append(el('span', pointID(p.i) + ' · ' + points[p.i].text), el('b', p.v.toFixed(3)));
+            b.onclick = () => pickPoint(selected, p.i);
+            return b;
+        }));
+        const picked = points[selected], ranked = features.map((name, i) => ({ name, weight: picked.v[i] })).sort((a, b) => b.weight - a.weight).slice(0, 3);
+        by('senseInfo').textContent = mode === 'meaning' ? [...picked.notes, ranked.map(f => f.name + ' ' + f.weight.toFixed(2)).join(' · ')].join(' / ') : 'Compared using 64 hashed character-fragment features.';
+        by('simReadout').textContent = peer === null ? 'Selected ' + pointID(selected) + ' · ' + points[selected].text : pointID(selected) + ' “' + points[selected].text + '” × ' + pointID(peer) + ' “' + points[peer].text + '” · cosine ' + similarities[selected][peer].toFixed(3);
+    }
+    function renderSimilarity() {
+        matrix(by('simHeat'), similarities, points.map((_, i) => pointID(i)), 'Cosine similarity in the original dimensions', v => 'color-mix(in srgb,' + css(v < 0 ? 'amber' : 'mint') + ' ' + Math.round(12 + Math.abs(v) * 78) + '%, ' + css('inset') + ')', (r, c) => {
+            selected = r;
+            peer = c;
+            refreshSelection();
+            schedulePlot();
+        }, [selected, peer ?? selected]);
+    }
+    function pickPoint(i, j = null) {
+        selected = i;
+        peer = j;
+        refreshSelection();
+        renderSimilarity();
+        schedulePlot();
+    }
+    const camera = { yaw: -.43, pitch: .24, zoom: 1 };
+    let drawn = [], plotFrame = 0, lastTime = 0, plotVisible = true, hover = -1;
+    const pointers = new Map();
+    let drag = null;
+    function schedulePlot() {
+        if (!plotFrame && embedReady)
+            plotFrame = requestAnimationFrame(drawFrame);
+    }
+    function drawFrame(t) {
+        plotFrame = 0;
+        const spinning = by('rotate').checked && plotVisible && !document.hidden;
+        if (spinning && lastTime)
+            camera.yaw += Math.min(40, t - lastTime) * .00019;
+        lastTime = spinning ? t : 0;
+        renderPlot();
+        if (spinning)
+            schedulePlot();
+    }
+    function renderPlot() {
+        paintCanvas(by('plot'), (c, w, h) => {
+            c.fillStyle = css('inset');
+            c.fillRect(0, 0, w, h);
+            const max = Math.max(.001, ...projected.map(magnitude)), s = Math.min(w * .385, h * .365) * camera.zoom, cy = Math.cos(camera.yaw), sy = Math.sin(camera.yaw), cp = Math.cos(camera.pitch), sp = Math.sin(camera.pitch);
+            function project(x, y, z) {
+                const xx = cy * x + sy * z, zz = -sy * x + cy * z, yy = cp * y - sp * zz, depth = sp * y + cp * zz, f = 4 / (4 - depth);
+                return { x: w * .5 + xx * s * f, y: h * .52 - yy * s * f, z: depth, f };
+            }
+            function line(a, b, color) {
+                const p = project(...a), q = project(...b);
+                c.strokeStyle = color;
+                c.beginPath();
+                c.moveTo(p.x, p.y);
+                c.lineTo(q.x, q.y);
+                c.stroke();
+            }
+            c.lineWidth = .8;
+            for (let i = -4; i <= 4; i++) {
+                line([i / 4, -.8, -1], [i / 4, -.8, 1], css('line2'));
+                line([-1, -.8, i / 4], [1, -.8, i / 4], css('line2'));
+            }
+            const origin = [-.96, -.8, -.96];
+            [[1, -.8, -.96], [-.96, 1, -.96], [-.96, -.8, 1]].forEach((end, k) => {
+                line(origin, end, css('dim'));
+                const p = project(...end);
+                c.fillStyle = css('sub');
+                c.font = '11px monospace';
+                c.fillText('PC' + (k + 1), bounded(p.x + 3, 3, w - 28), bounded(p.y, 13, h - 3));
+            });
+            drawn = projected.map((v, i) => ({ ...project(...v.map(x => x / max)), i })).sort((a, b) => a.z - b.z);
+            if (peer !== null) {
+                const a = drawn.find(p => p.i === selected), b = drawn.find(p => p.i === peer);
+                c.save();
+                c.strokeStyle = css('text');
+                c.setLineDash([4, 5]);
+                c.beginPath();
+                c.moveTo(a.x, a.y);
+                c.lineTo(b.x, b.y);
+                c.stroke();
+                c.restore();
+            }
+            const labelBoxes = [];
+            for (const p of drawn) {
+                const active = p.i === selected || p.i === peer || p.i === hover, color = colorFor(groupsNow[p.i]), radius = 4.7 * p.f;
+                c.globalAlpha = active ? 1 : bounded(.8 + p.z * .16, .55, 1);
+                c.fillStyle = color;
+                c.beginPath();
+                c.arc(p.x, p.y, radius, 0, 7);
+                c.fill();
+                if (active) {
+                    c.strokeStyle = css('text');
+                    c.lineWidth = 1.4;
+                    c.beginPath();
+                    c.arc(p.x, p.y, radius + 3.5, 0, 7);
+                    c.stroke();
+                }
+                if (by('labels').checked || active) {
+                    c.font = '11px monospace';
+                    const x = bounded(p.x + 10, 3, w - 34);
+                    let y = bounded(p.y - 7, 12, h - 4);
+                    for (let attempt = 0; attempt < 8 && labelBoxes.some(q => Math.abs(q.x - x) < 31 && Math.abs(q.y - y) < 12); attempt++)
+                        y = y + 13 < h ? y + 13 : Math.max(12, y - 35);
+                    labelBoxes.push({ x, y });
+                    c.fillStyle = css('inset');
+                    c.fillRect(x - 1, y - 10, 24, 12);
+                    c.fillStyle = css('text');
+                    c.fillText(pointID(p.i), x, y);
+                }
+            }
+            c.globalAlpha = 1;
+        });
+    }
+    function resetCamera() {
+        Object.assign(camera, { yaw: -.43, pitch: .24, zoom: 1 });
+        schedulePlot();
+    }
+    function setupPlotControls() {
+        const cv = by('plot');
+        function pos(e) {
+            const r = cv.getBoundingClientRect();
+            return { x: e.clientX - r.left, y: e.clientY - r.top };
+        }
+        function hit(p) {
+            return [...drawn].reverse().find(q => Math.hypot(q.x - p.x, q.y - p.y) < 13);
+        }
+        function pinch() {
+            const [a, b] = pointers.values();
+            return Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+        }
+        cv.onpointerdown = e => {
+            const p = pos(e);
+            cv.setPointerCapture(e.pointerId);
+            pointers.set(e.pointerId, p);
+            if (pointers.size === 1)
+                drag = { start: p, base: p, moved: false };
+            else if (pointers.size === 2) {
+                drag.moved = true;
+                drag.dist = pinch();
+                drag.zoom = camera.zoom;
+            }
+            by('plotTip').hidden = true;
+        };
+        cv.onpointermove = e => {
+            const p = pos(e);
+            if (!pointers.has(e.pointerId)) {
+                const h = hit(p);
+                hover = h?.i ?? -1;
+                const tip = by('plotTip');
+                tip.hidden = !h;
+                if (h) {
+                    tip.textContent = pointID(h.i) + ' · ' + points[h.i].text;
+                    tip.style.left = bounded(p.x + 10, 0, cv.clientWidth - tip.offsetWidth) + 'px';
+                    tip.style.top = bounded(p.y + 10, 0, cv.clientHeight - tip.offsetHeight) + 'px';
+                }
+                schedulePlot();
+                return;
+            }
+            pointers.set(e.pointerId, p);
+            if (pointers.size >= 2) {
+                camera.zoom = bounded(drag.zoom * pinch() / drag.dist, .55, 3.5);
+            }
+            else {
+                camera.yaw += (p.x - drag.base.x) * .011;
+                camera.pitch = bounded(camera.pitch + (p.y - drag.base.y) * .009, -1.45, 1.45);
+                if (Math.hypot(p.x - drag.start.x, p.y - drag.start.y) > 4)
+                    drag.moved = true;
+                drag.base = p;
+            }
+            schedulePlot();
+        };
+        function release(e) {
+            if (!pointers.has(e.pointerId))
+                return;
+            if (e.type === 'pointerup' && pointers.size === 1 && !drag.moved) {
+                const h = hit(pos(e));
+                if (h)
+                    pickPoint(h.i);
+            }
+            pointers.delete(e.pointerId);
+            if (pointers.size === 1)
+                drag.base = [...pointers.values()][0];
+            if (!pointers.size)
+                drag = null;
+        }
+        cv.onpointerup = cv.onpointercancel = release;
+        cv.onpointerleave = () => {
+            hover = -1;
+            by('plotTip').hidden = true;
+            schedulePlot();
+        };
+        cv.addEventListener('wheel', e => {
+            e.preventDefault();
+            camera.zoom = bounded(camera.zoom * Math.exp(-e.deltaY * .0015), .55, 3.5);
+            schedulePlot();
+        }, { passive: false });
+        cv.onkeydown = e => {
+            switch (e.key) {
+                case 'ArrowLeft':
+                    camera.yaw -= .12;
+                    break;
+                case 'ArrowRight':
+                    camera.yaw += .12;
+                    break;
+                case 'ArrowUp':
+                    camera.pitch = bounded(camera.pitch + .12, -1.45, 1.45);
+                    break;
+                case 'ArrowDown':
+                    camera.pitch = bounded(camera.pitch - .12, -1.45, 1.45);
+                    break;
+                case '+':
+                case '=':
+                    camera.zoom = bounded(camera.zoom * 1.1, .55, 3.5);
+                    break;
+                case '-':
+                    camera.zoom = bounded(camera.zoom / 1.1, .55, 3.5);
+                    break;
+                default: return;
+            }
+            e.preventDefault();
+            schedulePlot();
+        };
+        by('resetCamera').onclick = resetCamera;
+        by('rotate').onchange = by('labels').onchange = schedulePlot;
+        new IntersectionObserver(entries => {
+            plotVisible = entries[0].isIntersecting;
+            schedulePlot();
+        }).observe(cv);
+    }
+    function setMode(m) {
+        mode = m;
+        all('[data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode));
+        computePoints();
+    }
+    function initEmbeddings() {
+        embedReady = true;
+        by('wordEntryCount').textContent = lex.size + 2;
+        setupPlotControls();
+        by('lexDesc').textContent = (lex.size + 2) + ' hand-written word entries share ' + features.length + ' interpretable features. For example, “kitten” has animal, companion and household weights. Stop words contribute 0.12 of a regular word’s weight.';
+        by('group').onchange = () => {
+            selected = 0;
+            peer = null;
+            computePoints();
+        };
+        by('clusters').oninput = computePoints;
+        by('pointSelect').onchange = () => pickPoint(+by('pointSelect').value);
+        all('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+        by('newPoints').oninput = () => limitInput('newPoints', MAX_POINTS * (MAX_POINT_CHARS + 1), 'pointWarn');
+        by('addPoints').onclick = () => {
+            const lines = by('newPoints').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean), room = MAX_POINTS - points.length, added = lines.slice(0, room).map(x => cut(x, MAX_POINT_CHARS));
+            let msg = '';
+            if (!lines.length)
+                msg = 'Enter at least one word or sentence.';
+            if (added.some((v, i) => v !== lines[i]))
+                msg = 'Long sentences were shortened to ' + MAX_POINT_CHARS + ' characters. ';
+            if (lines.length > room)
+                msg += 'The plot holds ' + MAX_POINTS + ' points. Remove a custom point to make room.';
+            by('pointWarn').textContent = msg;
+            if (added.length) {
+                selected = points.length;
+                peer = null;
+                custom.push(...added);
+                by('newPoints').value = lines.slice(added.length).join('\n');
+                computePoints();
+            }
+        };
+        by('csvExport').onclick = () => {
+            const names = mode === 'meaning' ? features : dim(64).map((_, i) => 'ngram_' + i);
+            const csvCell = x => '"' + String(x).replaceAll('"', '""') + '"';
+            const rows = [['id', 'sentence', 'mode', 'cluster', 'PC1', 'PC2', 'PC3', ...names], ...points.map((p, i) => [pointID(i), p.text, mode, groupsNow[i] + 1, ...projected[i], ...p.v])];
+            download('pipeline-embeddings.csv', new Blob([rows.map(r => r.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+        };
+        by('pngExport').onclick = () => {
+            renderPlot();
+            by('plot').toBlob(b => {
+                if (b)
+                    download('pipeline-plot.png', b);
+            }, 'image/png');
+        };
+        setMode(mode);
+    }
+    // ATTENTION — seeded projections, scaled scores, row softmax and weighted values.
+    function softmax(scores, temperature = 1) {
+        if (!scores.length)
+            return [];
+        const max = Math.max(...scores);
+        if (max === -Infinity)
+            return scores.map(() => 0);
+        const weights = scores.map(s => Math.exp((s - max) / Math.max(.001, temperature))), sum = weights.reduce((a, b) => a + b, 0);
+        return weights.map(v => v / sum);
+    }
+    const ATTN_D = 8, ATTN_CAP = 24;
+    function projections() {
+        const rng = seeded(74193);
+        return Array.from({ length: 3 }, () => Array.from({ length: ATTN_D }, () => dim(features.length).map(() => (rng() * 2 - 1) * 1.5)));
+    }
+    const [wq, wk, wv] = projections();
+    function attention(ids, model, causal) {
+        const inputs = ids.map((id, i) => {
+            const b = model.bytes[id];
+            let raw;
+            try {
+                raw = strictDecoder.decode(Uint8Array.from(b));
+            }
+            catch {
+                raw = showToken(id, model);
+            }
+            let base = raw.trim() ? unit(embed(raw).v) : grams(showToken(id, model), features.length);
+            return base.map((v, j) => v + .12 * (j % 2 ? Math.cos : Math.sin)(i / Math.pow(10000, 2 * Math.floor(j / 2) / features.length)));
+        });
+        const project = m => inputs.map(v => m.map(row => dot(row, v))), q = project(wq), k = project(wk), v = project(wv);
+        const scores = q.map(query => k.map(key => dot(query, key))), scaled = scores.map((row, i) => row.map((x, j) => causal && j > i ? -Infinity : x / Math.sqrt(ATTN_D))), weights = scaled.map(row => softmax(row)), out = weights.map(row => dim(ATTN_D).map((_, a) => row.reduce((sum, w, j) => sum + w * v[j][a], 0)));
+        return { q, k, v, scores, scaled, weights, out };
+    }
+    const vectorText = v => '[' + v.map(x => x.toFixed(2)).join(', ') + ']';
+    let attRow = 2, attCol = 0;
+    function renderAttention() {
+        const ids = encoded.slice(0, ATTN_CAP), n = ids.length, causal = by('causal').checked;
+        by('attSize').textContent = n + ' × ' + n + ' tokens · d = ' + ATTN_D + ' · fixed seed 74193';
+        by('attWarn').textContent = encoded.length > ATTN_CAP ? 'Showing the first ' + ATTN_CAP + ' of ' + encoded.length + ' tokens.' : '';
+        if (!n) {
+            by('attHeat').replaceChildren();
+            by('attPair').textContent = 'Enter a sentence to inspect its attention weights.';
+            by('attMath').replaceChildren();
+            by('attVectors').replaceChildren();
+            return;
+        }
+        const a = attention(ids, model, causal), names = ids.map((id, i) => (i + 1) + '·' + showToken(id, model));
+        attRow = bounded(attRow, 0, n - 1);
+        attCol = bounded(attCol, 0, n - 1);
+        function inspect(r, c) {
+            attRow = r;
+            attCol = c;
+            const masked = causal && c > r;
+            by('attPair').textContent = 'Query ' + names[r] + ' attends to key ' + names[c];
+            const math = [['1 · Dot product', 'q · k = ' + a.scores[r][c].toFixed(4)], ['2 · Scale by the key dimension', a.scores[r][c].toFixed(4) + ' / √' + ATTN_D + ' = ' + (a.scores[r][c] / Math.sqrt(ATTN_D)).toFixed(4)], ['3 · Softmax across allowed keys', masked ? 'Masked to −∞ · weight = 0' : 'weight = ' + a.weights[r][c].toFixed(4) + ' · row sum = ' + a.weights[r].reduce((x, y) => x + y, 0).toFixed(3)], ['4 · Mix the value vectors', 'output[0] = Σ weight × value[0] = ' + a.out[r][0].toFixed(4)]];
+            by('attMath').replaceChildren(...math.map(([title, val]) => {
+                const node = el('div', undefined, 'mathstep');
+                node.append(el('span', title), el('b', val));
+                return node;
+            }));
+            by('attVectors').replaceChildren(...[['Query', a.q[r]], ['Key', a.k[c]], ['Value at key', a.v[c]], ['This key’s contribution', a.v[c].map(z => z * a.weights[r][c])], ['Output for query', a.out[r]]].map(([name, v]) => el('div', name + ' ' + vectorText(v))));
+        }
+        const cells = a.weights.map((row, r) => row.map((v, c) => causal && c > r ? null : v));
+        matrix(by('attHeat'), cells, names, 'Attention by query row and key column', v => v === null ? 'transparent' : 'color-mix(in srgb,' + css('purple') + ' ' + Math.round(12 + v * 78) + '%, ' + css('inset') + ')', inspect, [attRow, attCol]);
+        inspect(attRow, attCol);
+    }
+    function initAttention() {
+        by('attText').value = by('sentence').value;
+        by('attText').oninput = debounce(() => {
+            const raw = by('attText').value;
+            by('attText').value = cut(raw, MAX_SENTENCE);
+            by('sentence').value = by('attText').value;
+            by('sentenceWarn').textContent = raw !== by('attText').value ? 'Input shortened to ' + MAX_SENTENCE + ' Unicode characters.' : '';
+            renderEncoder();
+            renderAttention();
+            if (raw !== by('attText').value)
+                by('attWarn').textContent = 'Input shortened to ' + MAX_SENTENCE + ' characters. ' + by('attWarn').textContent;
+        });
+        by('causal').onchange = renderAttention;
+        renderAttention();
+    }
+    // LM — counted token n-grams with explicit suffix backoff.
+    function trainLM(corpus, model, step) {
+        const uni = new Map(), bi = new Map(), tri = new Map();
+        function inc(map, id) {
+            map.set(id, (map.get(id) || 0) + 1);
+        }
+        function bucket(table, key) {
+            if (!table.has(key))
+                table.set(key, new Map());
+            return table.get(key);
+        }
+        for (const line of corpus.split(/\r\n?|\n/u).filter(s => s.trim())) {
+            const seq = [BOS, BOS, ...encode(line, model, step), EOS];
+            for (let i = 2; i < seq.length; i++) {
+                const t = seq[i];
+                inc(uni, t);
+                inc(bucket(bi, seq[i - 1]), t);
+                inc(bucket(tri, seq[i - 2] + ',' + seq[i - 1]), t);
+            }
+        }
+        return { uni, bi, tri };
+    }
+    function distribution(lm, context, order, temp, topK, topP) {
+        const recent = [BOS, BOS, ...context], a = recent.at(-2), b = recent.at(-1);
+        let counts = order === 3 && lm.tri.get(a + ',' + b), kind = 'Trigram';
+        if (!counts) {
+            counts = lm.bi.get(b);
+            kind = 'Bigram';
+        }
+        if (!counts) {
+            counts = lm.uni;
+            kind = 'Unigram';
+        }
+        const ranked = Array.from(counts, ([id, count]) => ({ id, count })).sort((a, b) => b.count - a.count || a.id - b.id);
+        if (!ranked.length)
+            return { items: [], kind };
+        const probs = softmax(ranked.map(x => Math.log(x.count)), temp);
+        let items = ranked.map((x, i) => ({ ...x, p: probs[i] }));
+        if (topK > 0)
+            items = items.slice(0, topK);
+        const mass = items.reduce((s, x) => s + x.p, 0);
+        let cum = 0, last = 0;
+        for (const x of items) {
+            cum += x.p / mass;
+            last++;
+            if (cum >= topP - 1e-12)
+                break;
+        }
+        items = items.slice(0, last);
+        const retained = items.reduce((s, x) => s + x.p, 0);
+        return { kind, items: items.map(x => ({ ...x, p: x.p / retained })) };
+    }
+    function sample(items, random = Math.random) {
+        let threshold = random();
+        for (const x of items) {
+            threshold -= x.p;
+            if (threshold <= 0)
+                return x.id;
+        }
+        return items.at(-1)?.id;
+    }
+    let lm, generated = [], genTimer = 0, finished = '', lmChoices = [];
+    function stopGeneration() {
+        clearInterval(genTimer);
+        genTimer = 0;
+        by('generateLabel').textContent = 'Generate';
+    }
+    function resetGeneration() {
+        stopGeneration();
+        generated = [];
+        finished = '';
+        renderLM();
+    }
+    function rebuildLM() {
+        lm = trainLM(builtText, model, step);
+        resetGeneration();
+    }
+    function renderLM() {
+        const prompt = by('prompt').value, ids = encode(prompt, model, step), t = +by('temp').value, k = +by('topk').value, p = +by('topp').value, res = distribution(lm, [...ids, ...generated], +by('order').value, t, k, p);
+        lmChoices = res.items;
+        by('lmBadge').textContent = res.kind;
+        by('tempValue').textContent = t.toFixed(2);
+        by('topkValue').textContent = k || 'All';
+        by('toppValue').textContent = Math.round(p * 100) + '%';
+        const atEnd = generated.at(-1) === EOS;
+        by('bars').replaceChildren(...(atEnd ? [] : lmChoices.map(x => {
+            const row = el('div', undefined, 'barrow'), track = el('div', undefined, 'bartrack'), bar = el('i'), label = el('span', showToken(x.id, model));
+            label.title = label.textContent + ' · ' + x.count + ' observations';
+            bar.style.width = (x.p * 100) + '%';
+            track.append(bar);
+            row.append(label, track, el('span', (x.p * 100).toFixed(1) + '%', 'percent'));
+            return row;
+        })));
+        by('distNote').textContent = atEnd ? 'End of sequence. Reset to sample a new continuation.' : lmChoices.length ? lmChoices.length + ' possible next ' + (lmChoices.length === 1 ? 'token' : 'tokens') + ' after filtering. ' + (res.kind === 'Unigram' ? 'No matching context. Using corpus-wide counts.' : res.kind === 'Bigram' && +by('order').value === 3 ? 'Unseen token pair. Using the last token.' : 'Using matching contexts in the corpus.') : 'Build a vocabulary from a nonempty corpus to generate text.';
+        const bytes = Uint8Array.from(generated.filter(id => id !== EOS).flatMap(id => model.bytes[id]));
+        const d = new TextDecoder('utf-8', { ignoreBOM: true }), generatedText = d.decode(bytes, { stream: !finished });
+        by('generation').replaceChildren(el('span', prompt), el('strong', generatedText));
+        if (!prompt && !generated.length)
+            by('generation').append(el('span', 'Start of sequence', 'meta'));
+        by('generate').disabled = by('oneToken').disabled = !lmChoices.length || !!finished;
+        by('oneToken').disabled ||= !!genTimer;
+        by('lmStatus').textContent = (finished ? finished + ' · ' : '') + generated.length + ' / 24 sampled tokens' + (generated.length ? ' · Last token ' + showToken(generated.at(-1), model) : '');
+    }
+    function sampleOnce() {
+        if (finished || !lmChoices.length)
+            return;
+        const id = sample(lmChoices);
+        generated.push(id);
+        if (id === EOS)
+            finished = 'End marker reached';
+        else if (generated.length >= 24)
+            finished = 'Generation limit reached';
+        if (finished)
+            stopGeneration();
+        renderLM();
+    }
+    function initLM() {
+        const renderPrompt = debounce(resetGeneration);
+        by('prompt').oninput = () => {
+            stopGeneration();
+            limitInput('prompt', MAX_SENTENCE, 'promptWarn');
+            renderPrompt();
+        };
+        by('order').onchange = resetGeneration;
+        ['temp', 'topk', 'topp'].forEach(id => by(id).oninput = renderLM);
+        by('generate').onclick = () => {
+            if (genTimer) {
+                stopGeneration();
+                renderLM();
+                return;
+            }
+            genTimer = setInterval(sampleOnce, 400);
+            by('generateLabel').textContent = 'Pause';
+            sampleOnce();
+        };
+        by('oneToken').onclick = sampleOnce;
+        by('resetLM').onclick = resetGeneration;
+        rebuildLM();
+    }
+    // UI — the hero diagram is drawn locally with the same canvas API as the plot.
+    function drawHero() {
+        paintCanvas(by('heroArt'), (c, w, h) => {
+            const W = 600, H = 176, sy = Math.min(w / W, h / H), sx = w / W, offset = (h - H * sy) / 2;
+            c.translate(0, offset);
+            c.scale(sx, sy);
+            const light = document.documentElement.dataset.theme === 'light', violet = light ? '#8161c8' : '#b29ae9', mint = light ? '#438f83' : '#8cdecb', peach = light ? '#c57e4f' : '#efb58e', ink = css('hero');
+            function path(points, stroke, fill, width = 1) {
+                c.beginPath();
+                points.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y));
+                if (fill) {
+                    c.closePath();
+                    c.fillStyle = fill;
+                    c.fill();
+                }
+                if (stroke) {
+                    c.strokeStyle = stroke;
+                    c.lineWidth = width;
+                    c.stroke();
+                }
+            }
+            function circle(x, y, r, color) {
+                c.fillStyle = color;
+                c.beginPath();
+                c.arc(x, y, r, 0, 7);
+                c.fill();
+            }
+            for (let x = 4; x < W; x += 12)
+                for (let y = 4; y < H; y += 12)
+                    circle(x, y, .69, css('grid'));
+            for (let i = 0; i < 11; i++) {
+                const y = (i - 5) * 2.6;
+                c.strokeStyle = (light ? '#796eac' : '#a595d6') + '37';
+                c.lineWidth = .8;
+                c.beginPath();
+                c.moveTo(0, 97 + y);
+                c.bezierCurveTo(59, 92 + y, 75, 68 - y, 136, 93 + y);
+                c.bezierCurveTo(170, 110 + y, 191, 94 - y, 225, 89 + y);
+                c.bezierCurveTo(273, 71 + y, 294, 110 - y, 346, 90 + y);
+                c.bezierCurveTo(397, 78 + y, 433, 98 - y, 474, 97 + y);
+                c.bezierCurveTo(519, 96 + y, 553, 73 - y, 600, 82 + y);
+                c.stroke();
+            }
+            function iso(x, y, z) {
+                return [(x - y) * .87, (x + y) * .35 - z];
+            }
+            function box(cx, cy, x, y, z, dx, dy, dz, colors) {
+                const p = (a, b, d) => {
+                    const [xx, yy] = iso(a, b, d);
+                    return [cx + xx, cy + yy];
+                };
+                const t = z + dz;
+                path([p(x, y + dy, z), p(x + dx, y + dy, z), p(x + dx, y + dy, t), p(x, y + dy, t)], colors[3], colors[1], .7);
+                path([p(x + dx, y, z), p(x + dx, y + dy, z), p(x + dx, y + dy, t), p(x + dx, y, t)], colors[3], colors[2], .7);
+                path([p(x, y, t), p(x + dx, y, t), p(x + dx, y + dy, t), p(x, y + dy, t)], colors[3], colors[0], .8);
+            }
+            const tiles = [['#a892e4', '#7768a9', '#645590', '#c8b5fa'], ['#bfa8fa', '#8c79bf', '#7261a6', '#d5c6fb'], ['#d4c2ff', '#a48dcf', '#8e7cb4', '#e7dafa']];
+            for (let layer = 0; layer < 3; layer++)
+                for (let a = 0; a < 3; a++)
+                    for (let b = 0; b < 2; b++)
+                        box(65 + layer * 2, 112, a * 17 - 24, b * 20 - 17, layer * 16, 15, 18, 10, tiles[layer]);
+            const cloud = [], rng = seeded(6400);
+            for (let i = 0; i < 43; i++) {
+                const theta = i * 2.399963, r = Math.sqrt(1 - (1 - 2 * (i + .5) / 43) ** 2), z = 1 - 2 * (i + .5) / 43;
+                cloud.push({ x: 225 + 43 * r * Math.cos(theta) + z * 10, y: 91 + z * 43 + r * Math.sin(theta) * 8, d: r * Math.sin(theta) });
+            }
+            for (let i = 0; i < cloud.length; i++)
+                for (let j = i + 1; j < cloud.length; j++) {
+                    const a = cloud[i], b = cloud[j], dist = Math.hypot(a.x - b.x, a.y - b.y, (a.d - b.d) * 34);
+                    if (dist < 28)
+                        path([[a.x, a.y], [b.x, b.y]], mint + (a.d + b.d > 0 ? '86' : '38'), null, .9);
+                }
+            cloud.sort((a, b) => a.d - b.d).forEach(p => {
+                circle(p.x, p.y, 2.1 + p.d * .7, mint);
+                if (p.d > .55)
+                    circle(p.x, p.y, .9, light ? '#e4fff9' : '#d5fff2');
+            });
+            const layers = [];
+            for (let l = 0; l < 3; l++) {
+                const nodes = [];
+                for (let a = 0; a < 2; a++)
+                    for (let b = 0; b < 4; b++)
+                        nodes.push([341 + l * 28 + a * 11, 57 + b * 20 + a * 9 - l * 2]);
+                layers.push(nodes);
+            }
+            for (let l = 0; l < 2; l++)
+                layers[l].forEach((p, i) => layers[l + 1].forEach((q, j) => {
+                    if ((i + j) % 3 !== 0 && i !== j)
+                        return;
+                    path([p, q], violet + ((i + j) % 2 ? '63' : 'aa'), null, .9);
+                }));
+            layers.forEach((layer, i) => {
+                path([layer[0], layer[4], layer[7], layer[3]], violet + '66', violet + '0e');
+                layer.forEach(p => {
+                    circle(...p, 3.1, ink);
+                    circle(...p, 2.2, violet);
+                });
+            });
+            const bars = [24, 39, 63, 48, 78, 53, 34];
+            bars.forEach((height, i) => box(518, 109, (i - 3) * 11, -5, 0, 8, 10, height, [peach, light ? '#b97959' : '#ca977d', light ? '#a66241' : '#a87968', peach]));
+            for (let i = 0; i < 10; i++) {
+                const x = 12 + rng() * 570, y = 68 + rng() * 47;
+                circle(x, y, .85, violet + '90');
+            }
+        });
+    }
+    let stagesReady = false;
+    function onVocabularyChanged() {
+        if (stagesReady) {
+            renderAttention();
+            rebuildLM();
+        }
+    }
+    function onSentenceChanged() {
+        by('attText').value = by('sentence').value;
+        renderAttention();
+    }
+    function storePref(key, value) {
+        try {
+            localStorage.setItem('pipeline2-' + key, value);
+        }
+        catch { }
+    }
+    function getPref(key) {
+        try {
+            return localStorage.getItem('pipeline2-' + key);
+        }
+        catch {
+            return null;
+        }
+    }
+    const prefersLight = matchMedia('(prefers-color-scheme: light)'), reduced = matchMedia('(prefers-reduced-motion: reduce)');
+    function themeTo(theme) {
+        document.documentElement.dataset.theme = theme;
+        by('themeBtn').setAttribute('aria-label', 'Switch to ' + (theme === 'light' ? 'dark' : 'light') + ' theme');
+        by('themeBtn').title = by('themeBtn').getAttribute('aria-label');
+        requestAnimationFrame(() => {
+            drawHero();
+            if (model)
+                drawCurve();
+            if (embedReady) {
+                computePoints();
+                renderAttention();
+            }
+        });
+    }
+    const tourSteps = [
+        ['corpusPanel', 'Train the vocabulary', 'Edit the corpus or load a preset. Build vocabulary counts byte pairs and learns a ranked list of merges.'],
+        ['replayPanel', 'Replay a merge', 'Rewind, then step through training. Watch the token count fall as the vocabulary grows.'],
+        ['encoderPanel', 'Inspect the token stream', 'Try an unfamiliar word or emoji. Select a colored piece to see its ID and UTF-8 bytes.'],
+        ['plot', 'Explore the embedding space', 'Drag to orbit the points. Switch between meaning and surface wording to test what each representation captures.'],
+        ['attHeat', 'Read an attention row', 'Select a cell to follow one query–key pair through the calculation. Turn off the mask to allow future context.'],
+        ['samplerPanel', 'Sample a continuation', 'Adjust temperature, top-k and top-p. Select Generate to draw tokens from the distribution.']
+    ];
+    let tourIndex = -1, tourOpener = null;
+    function positionTour() {
+        if (tourIndex < 0)
+            return;
+        const card = by('tourCard'), r = by(tourSteps[tourIndex][0]).getBoundingClientRect(), gap = 10, w = card.offsetWidth, h = card.offsetHeight, spaceBelow = innerHeight - r.bottom;
+        let top = spaceBelow > h + gap ? r.bottom + gap : r.top > h + 60 ? r.top - h - gap : innerHeight - h - gap;
+        card.style.top = bounded(top, 8, Math.max(8, innerHeight - h - 8)) + 'px';
+        card.style.left = bounded(r.left, 12, Math.max(12, innerWidth - w - 12)) + 'px';
+        if (r.width > w + 220 && spaceBelow < h + gap && r.top < h + 60)
+            card.style.left = bounded(r.right - w, 12, Math.max(12, innerWidth - w - 12)) + 'px';
+    }
+    function tourTo(index) {
+        if (tourIndex >= 0)
+            by(tourSteps[tourIndex][0]).classList.remove('tourFocus');
+        if (index < 0 || index >= tourSteps.length) {
+            tourIndex = -1;
+            by('tourCard').hidden = true;
+            storePref('tour', 'seen');
+            by('tourBtn').lastChild.textContent = 'Guided tour';
+            tourOpener?.focus({ preventScroll: true });
+            return;
+        }
+        tourIndex = index;
+        const [id, title, body] = tourSteps[index], target = by(id);
+        target.classList.add('tourFocus');
+        target.scrollIntoView({ behavior: 'instant', block: 'center' });
+        by('tourCard').hidden = false;
+        by('tourCount').textContent = 'GUIDED TOUR · ' + (index + 1) + ' / ' + tourSteps.length;
+        by('tourTitle').textContent = title;
+        by('tourBody').textContent = body;
+        by('tourBack').disabled = !index;
+        by('tourNext').textContent = index === tourSteps.length - 1 ? 'Finish' : 'Next';
+        positionTour();
+        by('tourNext').focus({ preventScroll: true });
+    }
+    function currentState() {
+        return { version: 1, preset: by('corpusPreset').value, corpus: builtText, draft: by('corpus').value, step, sentence: by('sentence').value, visible: by('visible').checked, compare: by('comparePanel').open, group: by('group').value, custom, mode, k: +by('clusters').value, selected, peer, camera: { ...camera }, labels: by('labels').checked, rotate: by('rotate').checked, pending: by('newPoints').value, causal: by('causal').checked, attRow, attCol, prompt: by('prompt').value, order: +by('order').value, temp: +by('temp').value, topk: +by('topk').value, topp: +by('topp').value, generated, theme: document.documentElement.dataset.theme };
+    }
+    function readState() {
+        try {
+            const h = location.hash;
+            if (!h.startsWith('#s=') || h.length > 240000)
+                return {};
+            const obj = JSON.parse(decodeURIComponent(h.slice(3)));
+            return obj && obj.version === 1 ? obj : {};
+        }
+        catch {
+            return {};
+        }
+    }
+    function cleanString(s, otherwise, cap) {
+        return typeof s === 'string' ? cut(s, cap) : otherwise;
+    }
+    function num(v, def, min, max) {
+        return typeof v === 'number' && Number.isFinite(v) ? bounded(v, min, max) : def;
+    }
+    function restore(s) {
+        const preset = Object.hasOwn(corpora, s.preset) ? s.preset : 'english';
+        by('corpusPreset').value = s.preset === 'custom' ? 'custom' : preset;
+        by('corpus').value = cleanString(s.corpus, corpora[preset], MAX_CORPUS);
+        by('sentence').value = cleanString(s.sentence, by('sentence').value, MAX_SENTENCE);
+        by('visible').checked = s.visible === true;
+        by('comparePanel').open = s.compare === true;
+        initTokenizer();
+        buildCorpus(typeof s.step === 'number' ? num(s.step, 0, 0, 144) : undefined);
+        by('corpus').value = cleanString(s.draft, builtText, MAX_CORPUS);
+        if (by('corpus').value !== builtText)
+            by('corpusStatus').textContent = 'Edits pending · build to apply';
+        by('group').value = Object.hasOwn(groups, s.group) ? s.group : 'mixed';
+        custom = Array.isArray(s.custom) ? s.custom.filter(x => typeof x === 'string' && x.trim()).slice(0, MAX_POINTS - groups[by('group').value].length).map(x => cut(x, MAX_POINT_CHARS)) : [];
+        by('newPoints').value = cleanString(s.pending, '', MAX_POINTS * (MAX_POINT_CHARS + 1));
+        mode = s.mode === 'surface' ? 'surface' : 'meaning';
+        by('clusters').value = Math.round(num(s.k, 4, 1, 6));
+        selected = Math.round(num(s.selected, 0, 0, MAX_POINTS - 1));
+        peer = typeof s.peer === 'number' ? Math.round(num(s.peer, 0, 0, MAX_POINTS - 1)) : null;
+        by('labels').checked = s.labels !== false;
+        by('rotate').checked = s.rotate === true && !reduced.matches;
+        const cam = s.camera || {};
+        camera.yaw = num(cam.yaw, -.43, -1e5, 1e5);
+        camera.pitch = num(cam.pitch, .24, -1.45, 1.45);
+        camera.zoom = num(cam.zoom, 1, .55, 3.5);
+        initEmbeddings();
+        by('causal').checked = s.causal !== false;
+        attRow = Math.round(num(s.attRow, 2, 0, ATTN_CAP - 1));
+        attCol = Math.round(num(s.attCol, 0, 0, ATTN_CAP - 1));
+        initAttention();
+        by('prompt').value = cleanString(s.prompt, 'The', MAX_SENTENCE);
+        by('order').value = s.order === 2 ? '2' : '3';
+        by('temp').value = num(s.temp, 1, .1, 2);
+        by('topk').value = Math.round(num(s.topk, 0, 0, 32));
+        by('topp').value = num(s.topp, 1, .05, 1);
+        initLM();
+        if (Array.isArray(s.generated)) {
+            generated = s.generated.slice(0, 24).filter(id => Number.isInteger(id) && id >= 0 && id !== BOS && id < BASE + step);
+            const end = generated.indexOf(EOS);
+            if (end >= 0) {
+                generated.length = end + 1;
+                finished = 'End marker reached';
+            }
+            else if (generated.length === 24)
+                finished = 'Generation limit reached';
+            renderLM();
+        }
+        stagesReady = true;
+    }
+    function shareExperiment() {
+        const value = '#s=' + encodeURIComponent(JSON.stringify(currentState()));
+        try {
+            history.replaceState(null, '', value);
+        }
+        catch {
+            location.hash = value;
+        }
+        by('shareUrl').value = location.href.split('#')[0] + value;
+        by('copyStatus').textContent = '';
+        by('share').showModal();
+    }
+    async function copyShare(fragment) {
+        const input = by('shareUrl');
+        input.value = fragment ? location.hash : location.href;
+        input.focus();
+        input.select();
+        try {
+            await navigator.clipboard.writeText(input.value);
+            by('copyStatus').textContent = fragment ? 'Fragment copied.' : 'Link copied.';
+        }
+        catch {
+            by('copyStatus').textContent = 'Address selected. Use your device’s copy command.';
+        }
+    }
+    function setupUI() {
+        const nav = all('[data-stage]');
+        function navTo() {
+            let active = 'tokenizer';
+            for (const b of nav)
+                if (by(b.dataset.stage).getBoundingClientRect().top <= Math.min(innerHeight * .28, 165))
+                    active = b.dataset.stage;
+            for (const b of nav) {
+                if (b.dataset.stage === active)
+                    b.setAttribute('aria-current', 'step');
+                else
+                    b.removeAttribute('aria-current');
+            }
+            positionTour();
+        }
+        let navFrame = 0;
+        addEventListener('scroll', () => {
+            if (!navFrame)
+                navFrame = requestAnimationFrame(() => {
+                    navFrame = 0;
+                    navTo();
+                });
+        }, { passive: true });
+        nav.forEach(b => b.onclick = () => {
+            const stage = by(b.dataset.stage);
+            stage.scrollIntoView({ behavior: reduced.matches ? 'instant' : 'smooth' });
+            stage.setAttribute('tabindex', '-1');
+            stage.focus({ preventScroll: true });
+        });
+        navTo();
+        by('aboutBtn').onclick = by('footerAbout').onclick = () => by('about').showModal();
+        all('[data-close]').forEach(b => b.onclick = () => by(b.dataset.close).close());
+        by('shareBtn').onclick = shareExperiment;
+        by('copyUrl').onclick = () => copyShare(false);
+        by('copyFragment').onclick = () => copyShare(true);
+        by('themeBtn').onclick = () => {
+            const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+            storePref('theme', next);
+            themeTo(next);
+        };
+        prefersLight.addEventListener('change', () => {
+            if (!getPref('theme'))
+                themeTo(prefersLight.matches ? 'light' : 'dark');
+        });
+        by('tourBtn').lastChild.textContent = getPref('tour') ? 'Guided tour' : 'Start guided tour';
+        by('tourBtn').onclick = () => {
+            tourOpener = by('tourBtn');
+            tourTo(0);
+        };
+        by('tourBack').onclick = () => tourTo(tourIndex - 1);
+        by('tourNext').onclick = () => tourTo(tourIndex + 1);
+        by('endTour').onclick = () => tourTo(-1);
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && tourIndex >= 0)
+                tourTo(-1);
+        });
+        addEventListener('resize', debounce(() => {
+            requestAnimationFrame(() => {
+                drawHero();
+                drawCurve();
+                schedulePlot();
+                positionTour();
+            });
+        }, 75));
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopReplay();
+                stopGeneration();
+                renderLM();
+            }
+            schedulePlot();
+        });
+        reduced.addEventListener('change', () => {
+            if (reduced.matches) {
+                by('rotate').checked = false;
+                schedulePlot();
+            }
+        });
+    }
+    function selfTests() {
+        const results = [];
+        function check(name, fn) {
+            try {
+                if (!fn())
+                    throw Error('Assertion failed');
+                results.push([true, name]);
+            }
+            catch (e) {
+                results.push([false, name + ' — ' + e.message]);
+            }
+        }
+        const near = (a, b) => Math.abs(a - b) < 1e-7;
+        check('BPE learns the most frequent pair', () => {
+            const m = trainBPE('aaaa');
+            return m.merges[0].a === 97 && m.merges[0].b === 97 && m.counts.join(',') === '4,2';
+        });
+        check('UTF-8 byte fallback round-trips Unicode', () => {
+            const m = trainBPE('cat cat');
+            const s = 'हिन्दी 🐈\t雪';
+            return decoder.decode(Uint8Array.from(encode(s, m, 20).flatMap(i => m.bytes[i]))) === s;
+        });
+        check('Cosine similarity handles identical, opposite and zero vectors', () => cosine([1, 0], [1, 0]) === 1 && cosine([1, 0], [-1, 0]) === -1 && cosine([0, 0], [1, 0]) === 0);
+        check('PCA recovers a line and its full variance', () => {
+            const a = pca([[-1, -1], [0, 0], [1, 1]]);
+            return near(a.retained, 1) && near(Math.abs(a.points[0][0]), Math.SQRT2) && a.points.every(p => near(p[1], 0) && near(p[2], 0));
+        });
+        check('PCA reports 75% for four equally varying axes', () => {
+            const rows = [];
+            for (let i = 0; i < 4; i++)
+                for (const s of [-1, 1]) {
+                    const v = dim(4);
+                    v[i] = s;
+                    rows.push(v);
+                }
+            return near(pca(rows).retained, .75);
+        });
+        check('K-means separates two groups and handles duplicate points', () => kmeans([[0], [.1], [5], [5.1]], 2).labels.join(',') === '0,0,1,1' && kmeans([[1], [1]], 4).centers.length === 1);
+        check('Softmax is stable, normalized and temperature-sensitive', () => {
+            const hot = softmax([1000, 1002], 2), cold = softmax([1000, 1002], .5);
+            return near(hot[0] + hot[1], 1) && cold[1] > hot[1];
+        });
+        check('Context resolves ambiguous word senses', () => embed('compile a Python program').notes[0] === 'python → programming language' && embed('the bat in the cave').notes[0] === 'bat → flying mammal');
+        check('Causal attention masks future positions and normalizes rows', () => {
+            const a = attention([97, 98, 99], trainBPE(''), true);
+            return a.weights.every((r, i) => near(r.reduce((s, x) => s + x, 0), 1) && r.slice(i + 1).every(x => x === 0));
+        });
+        check('N-gram probabilities and sampling filters agree with counts', () => {
+            const s = 'ax\nax\nay', m = trainBPE(s), l = trainLM(s, m, 0), dist = (k, p) => distribution(l, [97], 3, 1, k, p).items;
+            return near(dist(0, 1)[0].p, 2 / 3) && dist(1, 1).length === 1 && dist(0, .7).length === 2;
+        });
+        const passes = results.filter(x => x[0]).length;
+        by('selfPanel').hidden = false;
+        by('testSummary').textContent = passes + ' / ' + results.length + ' checks passed';
+        by('testResults').replaceChildren(...results.map(([ok, name]) => el('li', (ok ? 'PASS · ' : 'FAIL · ') + name, ok ? 't1' : 't4')));
+        for (const [ok, name] of results)
+            console[ok ? 'log' : 'error']((ok ? 'PASS' : 'FAIL') + ' · ' + name);
+        console.log(by('testSummary').textContent);
+    }
+    function start() {
+        const state = readState(), pref = state.theme || getPref('theme');
+        themeTo(pref === 'light' || pref === 'dark' ? pref : prefersLight.matches ? 'light' : 'dark');
+        restore(state);
+        setupUI();
+        if (location.hash === '#test')
+            selfTests();
+    }
+    start();
+})();
+</script>
+</body>
+
+</html>
